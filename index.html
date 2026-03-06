@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EmasKu - Catatan Treasury Yudi</title>
+    <title>EmasKu - Treasury Yudi</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
 
         <section class="summary">
             <div class="card highlight">
-                <span>Total Keseluruhan Saldo Emas</span>
+                <span>Total Seluruh Saldo Emas</span>
                 <strong id="total-gram-all">1.3701 Gr</strong>
             </div>
             <div class="card">
@@ -25,43 +25,24 @@
         </section>
 
         <section class="form-section">
-            <h3>Input Transaksi</h3>
-            <div class="input-group">
-                <label>Tanggal:</label>
-                <input type="date" id="input-date">
-            </div>
-            <div class="input-group">
-                <label>Keterangan:</label>
-                <input type="text" id="note" placeholder="Misal: Panen Januari">
-            </div>
-            <div class="input-group">
-                <label>Nominal (IDR):</label>
-                <input type="number" id="input-idr" placeholder="Contoh: 300000">
-            </div>
-            <div class="input-group">
-                <label>Berat (Gram):</label>
-                <input type="number" step="0.0001" id="input-gram" placeholder="Contoh: 0.1233">
-            </div>
-            <button class="btn-add" onclick="addData()">Simpan Transaksi</button>
+            <h3 id="form-title">Input Transaksi</h3>
+            <input type="hidden" id="edit-id">
+            <input type="date" id="input-date">
+            <input type="text" id="note" placeholder="Keterangan (Jan, Feb, dll)">
+            <input type="number" id="input-idr" placeholder="Nominal IDR">
+            <input type="number" step="0.0001" id="input-gram" placeholder="Berat Gram">
+            <button class="btn-add" id="btn-save" onclick="saveData()">Simpan Transaksi</button>
+            <button class="btn-sec" id="btn-cancel" onclick="resetForm()" style="display:none; margin-top:5px;">Batal Edit</button>
         </section>
 
         <section class="history">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3>Riwayat Transaksi</h3>
-                <select id="filter-month" onchange="updateDashboard()" style="padding: 5px; border-radius: 5px;">
+            <div class="history-header">
+                <h3>Riwayat</h3>
+                <select id="filter-month" onchange="updateDashboard()">
                     <option value="all">Semua Bulan</option>
                     <option value="0">Januari</option>
                     <option value="1">Februari</option>
                     <option value="2">Maret</option>
-                    <option value="3">April</option>
-                    <option value="4">Mei</option>
-                    <option value="5">Juni</option>
-                    <option value="6">Juli</option>
-                    <option value="7">Agustus</option>
-                    <option value="8">September</option>
-                    <option value="9">Oktober</option>
-                    <option value="10">November</option>
-                    <option value="11">Desember</option>
                 </select>
             </div>
             
@@ -69,32 +50,44 @@
                 <table id="data-table">
                     <thead>
                         <tr>
-                            <th>Tanggal</th>
-                            <th>Ket</th>
+                            <th>Tgl</th>
+                            <th>Keterangan</th>
                             <th>IDR</th>
                             <th>Gram</th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                     <tfoot>
-                        <tr style="background: #f1f1f1; font-weight: bold;">
-                            <td colspan="2">TOTAL (Filter)</td>
+                        <tr>
+                            <td colspan="2">TOTAL</td>
                             <td id="foot-idr">Rp 0</td>
                             <td id="foot-gram">0.0000</td>
-                            <td></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
+            <p style="font-size: 0.75em; color: #888; margin-top: 10px;">*Klik baris untuk Edit atau Hapus.</p>
         </section>
-        
+
         <div class="action-footer">
-            <button onclick="exportData()" class="btn-secondary">Backup (.json)</button>
+            <button onclick="exportData()" class="btn-sec">Backup</button>
             <input type="file" id="importFile" onchange="importData(event)" style="display:none">
-            <button onclick="document.getElementById('importFile').click()" class="btn-secondary">Upload Data</button>
+            <button onclick="document.getElementById('importFile').click()" class="btn-sec">Upload</button>
         </div>
     </div>
+
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <h3>Detail Transaksi</h3>
+            <div id="modal-body"></div>
+            <div class="modal-actions">
+                <button class="btn-edit" onclick="prepareEdit()">Edit</button>
+                <button class="btn-delete" onclick="confirmDelete()">Hapus</button>
+                <button class="btn-close" onclick="closeModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
