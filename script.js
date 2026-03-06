@@ -1,9 +1,11 @@
-// Data Dasar
 const baseBalance = 1.3701;
 let transactions = JSON.parse(localStorage.getItem('yudi_emas_db')) || [];
 
-// Load data saat pertama buka
-document.addEventListener('DOMContentLoaded', updateDashboard);
+document.addEventListener('DOMContentLoaded', () => {
+    // Set default tanggal ke hari ini
+    document.getElementById('input-date').valueAsDate = new Date();
+    updateDashboard();
+});
 
 function addData() {
     const date = document.getElementById('input-date').value;
@@ -16,22 +18,11 @@ function addData() {
         return;
     }
 
-    const entry = {
-        id: Date.now(),
-        date: date,
-        note: note,
-        idr: idr,
-        gram: gram
-    };
-
+    const entry = { id: Date.now(), date: date, note: note, idr: idr, gram: gram };
     transactions.push(entry);
-    
-    // URUTKAN BERDASARKAN TANGGAL (Penting agar Januari-Maret terstruktur)
     transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
     saveAndRefresh();
 
-    // Clear form
     document.getElementById('note').value = "";
     document.getElementById('input-idr').value = "";
     document.getElementById('input-gram').value = "";
@@ -43,48 +34,68 @@ function saveAndRefresh() {
 }
 
 function updateDashboard() {
-    let currentGram = baseBalance;
-    let currentIdr = 0;
+    const filterMonth = document.getElementById('filter-month').value;
     const tbody = document.querySelector('#data-table tbody');
     tbody.innerHTML = '';
 
-    transactions.forEach(item => {
-        currentGram += item.gram;
-        currentIdr += item.idr;
+    let totalGramAll = baseBalance;
+    let totalIdrAll = 0;
+    
+    let totalGramFiltered = 0;
+    let totalIdrFiltered = 0;
 
-        const row = tbody.insertRow();
-        row.innerHTML = `
-            <td>${formatDate(item.date)}</td>
-            <td>${item.note}</td>
-            <td>${item.idr.toLocaleString('id-ID')}</td>
-            <td>${item.gram.toFixed(4)}</td>
-            <td><button onclick="deleteItem(${item.id})" style="color:red; border:none; background:none;">X</button></td>
-        `;
+    transactions.forEach(item => {
+        const itemDate = new Date(item.date);
+        const itemMonth = itemDate.getMonth().toString();
+
+        // Hitung akumulasi global (tetap berjalan di latar belakang)
+        totalGramAll += item.gram;
+        totalIdrAll += item.idr;
+
+        // Logika Filter
+        if (filterMonth === "all" || filterMonth === itemMonth) {
+            totalGramFiltered += item.gram;
+            totalIdrFiltered += item.idr;
+
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${formatDate(item.date)}</td>
+                <td>${item.note}</td>
+                <td>${item.idr.toLocaleString('id-ID')}</td>
+                <td>${item.gram.toFixed(4)}</td>
+                <td><button onclick="deleteItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer">X</button></td>
+            `;
+        }
     });
 
-    document.getElementById('total-gram').innerText = currentGram.toFixed(4) + " Gr";
-    document.getElementById('total-idr').innerText = "Rp " + currentIdr.toLocaleString('id-ID');
+    // Update Header (Total Keseluruhan)
+    document.getElementById('total-gram-all').innerText = totalGramAll.toFixed(4) + " Gr";
+    document.getElementById('total-idr-all').innerText = "Rp " + totalIdrAll.toLocaleString('id-ID');
+
+    // Update Footer (Total Hasil Filter)
+    document.getElementById('foot-idr').innerText = "Rp " + totalIdrFiltered.toLocaleString('id-ID');
+    document.getElementById('foot-gram').innerText = totalGramFiltered.toFixed(4);
 }
 
 function formatDate(dateStr) {
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    return new Date(dateStr).toLocaleDateString('id-ID', options);
+    const d = new Date(dateStr);
+    return `${d.getDate()} ${d.toLocaleDateString('id-ID', {month: 'short'})}`;
 }
 
 function deleteItem(id) {
-    if(confirm("Hapus data ini?")) {
+    if(confirm("Hapus data?")) {
         transactions = transactions.filter(t => t.id !== id);
         saveAndRefresh();
     }
 }
 
-// Backup & Restore
+// Fungsi Export & Import tetap sama
 function exportData() {
     const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `backup_emas_yudi_${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `backup_emas_yudi.json`;
     a.click();
 }
 
