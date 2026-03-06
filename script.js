@@ -1,29 +1,9 @@
-let baseBalance = 1.3701;
-let transactions = JSON.parse(localStorage.getItem('emas_transactions')) || [];
+// Data Dasar
+const baseBalance = 1.3701;
+let transactions = JSON.parse(localStorage.getItem('yudi_emas_db')) || [];
 
-// 1. Fungsi Ambil Harga Emas dari API Publik (Contoh menggunakan API harga emas terbuka)
-async function fetchGoldPrice() {
-    try {
-        // Menggunakan API publik sederhana untuk demo (Bisa diganti dengan API key dari GoldAPI/Metalprice)
-        const response = await fetch('https://api.gold-api.com/price/XAU');
-        const data = await response.json();
-        
-        // Konversi dari USD per Ounce ke IDR per Gram (Estimasi)
-        // Kita gunakan harga rata-rata Treasury hari ini jika API gagal
-        const pricePerGramIDR = data.price_gram_24k || 1350000; 
-        
-        document.getElementById('live-price').innerText = "Rp " + pricePerGramIDR.toLocaleString('id-ID');
-        return pricePerGramIDR;
-    } catch (error) {
-        document.getElementById('live-price').innerText = "Rp 1.350.000 (Manual)";
-        return 1350000;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    fetchGoldPrice();
-    updateDashboard();
-});
+// Load data saat pertama buka
+document.addEventListener('DOMContentLoaded', updateDashboard);
 
 function addData() {
     const date = document.getElementById('input-date').value;
@@ -32,69 +12,88 @@ function addData() {
     const gram = parseFloat(document.getElementById('input-gram').value) || 0;
 
     if (!date || !note || gram === 0) {
-        alert("Mohon lengkapi Tanggal, Keterangan, dan Berat Emas!");
+        alert("Data belum lengkap!");
         return;
     }
 
-    const newTransaction = {
+    const entry = {
         id: Date.now(),
-        date: date, // Menyimpan tanggal input
+        date: date,
         note: note,
         idr: idr,
         gram: gram
     };
 
-    transactions.push(newTransaction);
+    transactions.push(entry);
     
-    // 2. SORTIR: Mengurutkan data berdasarkan tanggal secara otomatis
+    // URUTKAN BERDASARKAN TANGGAL (Penting agar Januari-Maret terstruktur)
     transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    saveData();
-    updateDashboard();
+    saveAndRefresh();
 
-    // Reset Form
+    // Clear form
     document.getElementById('note').value = "";
     document.getElementById('input-idr').value = "";
     document.getElementById('input-gram').value = "";
 }
 
+function saveAndRefresh() {
+    localStorage.setItem('yudi_emas_db', JSON.stringify(transactions));
+    updateDashboard();
+}
+
 function updateDashboard() {
-    let currentTotalGram = baseBalance;
-    let currentTotalIdr = 0;
+    let currentGram = baseBalance;
+    let currentIdr = 0;
     const tbody = document.querySelector('#data-table tbody');
     tbody.innerHTML = '';
 
-    transactions.forEach((item) => {
-        currentTotalGram += item.gram;
-        currentTotalIdr += item.idr;
+    transactions.forEach(item => {
+        currentGram += item.gram;
+        currentIdr += item.idr;
 
         const row = tbody.insertRow();
         row.innerHTML = `
-            <td>${item.date}</td>
+            <td>${formatDate(item.date)}</td>
             <td>${item.note}</td>
             <td>${item.idr.toLocaleString('id-ID')}</td>
             <td>${item.gram.toFixed(4)}</td>
-            <td><button onclick="deleteRow(${item.id})" style="color:red; border:none; background:none; cursor:pointer">Hapus</button></td>
+            <td><button onclick="deleteItem(${item.id})" style="color:red; border:none; background:none;">X</button></td>
         `;
     });
 
-    document.getElementById('total-gram').innerText = currentTotalGram.toFixed(4) + " Gr";
-    document.getElementById('total-idr').innerText = "Rp " + currentTotalIdr.toLocaleString('id-ID');
+    document.getElementById('total-gram').innerText = currentGram.toFixed(4) + " Gr";
+    document.getElementById('total-idr').innerText = "Rp " + currentIdr.toLocaleString('id-ID');
 }
 
-// Fungsi Simpan, Hapus, Export, Import tetap sama seperti sebelumnya...
-function saveData() { localStorage.setItem('emas_transactions', JSON.stringify(transactions)); }
-function deleteRow(id) { 
-    if(confirm("Hapus?")) { 
-        transactions = transactions.filter(t => t.id !== id); 
-        saveData(); updateDashboard(); 
-    } 
+function formatDate(dateStr) {
+    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+    return new Date(dateStr).toLocaleDateString('id-ID', options);
 }
+
+function deleteItem(id) {
+    if(confirm("Hapus data ini?")) {
+        transactions = transactions.filter(t => t.id !== id);
+        saveAndRefresh();
+    }
+}
+
+// Backup & Restore
 function exportData() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "backup_emas.json");
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_emas_yudi_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+}
+
+function importData(event) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        transactions = JSON.parse(e.target.result);
+        saveAndRefresh();
+        alert("Data berhasil diimpor!");
+    };
+    reader.readAsText(event.target.files[0]);
 }
