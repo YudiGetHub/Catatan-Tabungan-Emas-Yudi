@@ -28,7 +28,7 @@
             <h3 id="form-title">Input Transaksi</h3>
             <input type="hidden" id="edit-id">
             <input type="date" id="input-date">
-            <input type="text" id="note" placeholder="Keterangan">
+            <input type="text" id="note" placeholder="Keterangan (Jan, Feb, dll)">
             <input type="number" id="input-idr" placeholder="Nominal IDR">
             <input type="number" step="0.0001" id="input-gram" placeholder="Berat Gram">
             <button class="btn-add" id="btn-save" onclick="saveData()">Simpan</button>
@@ -36,17 +36,16 @@
         </section>
 
         <section class="history">
-            <div class="history-header" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                <h3>Riwayat Transaksi</h3>
-                <div style="display: flex; gap: 5px; width: 100%;">
-                    <select id="filter-year" onchange="updateDashboard()" style="flex: 1;">
-                        <option value="all">Semua Tahun</option>
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
-                        <option value="2027">2027</option>
-                    </select>
-                    <select id="filter-month" onchange="updateDashboard()" style="flex: 1;">
+            <h3>Riwayat Transaksi</h3>
+            
+            <div class="filter-container">
+                <div class="filter-row">
+                    <div class="year-stepper">
+                        <button onclick="changeYear(-1)">-</button>
+                        <input type="number" id="filter-year" value="2026" onchange="updateDashboard()">
+                        <button onclick="changeYear(1)">+</button>
+                    </div>
+                    <select id="filter-month" onchange="updateDashboard()">
                         <option value="all">Semua Bulan</option>
                         <option value="0">Januari</option>
                         <option value="1">Februari</option>
@@ -62,6 +61,7 @@
                         <option value="11">Desember</option>
                     </select>
                 </div>
+                <input type="text" id="filter-search" placeholder="Cari keterangan..." onkeyup="updateDashboard()">
             </div>
             
             <div class="table-container">
