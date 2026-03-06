@@ -1,3 +1,4 @@
+// Konfigurasi Firebase Milik Yudi
 const firebaseConfig = {
   apiKey: "AIzaSyBjZgLGUsSKHQM94KBAdhCRW7jwASKHYyE",
   authDomain: "emasku-yudi.firebaseapp.com",
@@ -8,47 +9,67 @@ const firebaseConfig = {
   measurementId: "G-VMNGN5SJ30"
 };
 
+// Inisialisasi Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const db = firebase.firestore(); // Inisialisasi Firestore
+const db = firebase.firestore();
 
 let transactions = [];
 let selectedId = null;
 let currentUser = null;
 
-// --- AUTHENTICATION ---
+// --- 1. LOGIKA AUTHENTICATION ---
 auth.onAuthStateChanged((user) => {
+    const loginScreen = document.getElementById('login-screen');
+    const mainApp = document.getElementById('main-app');
+
     if (user) {
         currentUser = user;
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'block';
-        document.getElementById('user-display').innerText = user.email;
-        loadDataFromFirestore(); // Ambil data dari awan saat login
+        loginScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        // Set tanggal default ke hari ini saat masuk
+        document.getElementById('input-date').valueAsDate = new Date();
+        document.getElementById('filter-year').value = new Date().getFullYear();
+        loadDataFromFirestore(); 
     } else {
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('main-app').style.display = 'none';
+        currentUser = null;
+        loginScreen.style.display = 'flex';
+        mainApp.style.display = 'none';
     }
 });
 
 function handleLogin() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
+    const errorMsg = document.getElementById('login-error');
+
+    if(!email || !pass) return alert("Masukkan email dan password!");
+
+    auth.signInWithEmailAndPassword(email, pass).catch(err => {
+        errorMsg.innerText = "Gagal Masuk: " + err.message;
+        errorMsg.style.display = 'block';
+    });
 }
 
-function handleLogout() { auth.signOut(); }
+function handleLogout() {
+    if(confirm("Apakah Anda ingin keluar?")) {
+        auth.signOut();
+    }
+}
 
-// --- DATABASE CLOUD (FIRESTORE) ---
+// --- 2. LOGIKA DATABASE FIRESTORE ---
 function loadDataFromFirestore() {
-    // Mengambil data spesifik milik user yang sedang login
+    // Real-time listener: data update otomatis tanpa refresh
     db.collection("users").doc(currentUser.uid).collection("emas")
-    .orderBy("date", "asc")
+    .orderBy("date", "desc") // Menampilkan data terbaru di atas
     .onSnapshot((snapshot) => {
         transactions = [];
         snapshot.forEach((doc) => {
             transactions.push({ id: doc.id, ...doc.data() });
         });
         updateDashboard();
+    }, (error) => {
+        console.error("Firestore Error: ", error);
     });
 }
 
@@ -61,27 +82,33 @@ function saveData() {
         gram: parseFloat(document.getElementById('input-gram').value) || 0
     };
 
-    if (!data.date || !data.note) return alert("Lengkapi data!");
+    if (!data.date || !data.note) return alert("Lengkapi tanggal dan keterangan!");
 
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
 
     if (id) {
-        // Update data di Cloud
-        userRef.doc(id).update(data).then(() => resetForm());
+        // Update data yang sudah ada
+        userRef.doc(id).update(data).then(() => {
+            resetForm();
+        }).catch(err => alert("Gagal update: " + err.message));
     } else {
-        // Tambah data baru ke Cloud
-        userRef.add(data).then(() => resetForm());
+        // Tambah data baru
+        userRef.add(data).then(() => {
+            resetForm();
+        }).catch(err => alert("Gagal simpan: " + err.message));
     }
 }
 
 function confirmDelete() {
-    if(confirm("Hapus data dari Cloud?")) {
+    if(confirm("Hapus data ini dari cloud? Tindakan ini tidak bisa dibatalkan.")) {
         db.collection("users").doc(currentUser.uid).collection("emas")
-        .doc(selectedId).delete().then(() => closeModal());
+        .doc(selectedId).delete().then(() => {
+            closeModal();
+        }).catch(err => alert("Gagal hapus: " + err.message));
     }
 }
 
-// --- DASHBOARD & UI (TETAP SAMA) ---
+// --- 3. LOGIKA DASHBOARD & UI ---
 function updateDashboard() {
     const filterYear = document.getElementById('filter-year').value;
     const filterMonth = document.getElementById('filter-month').value;
@@ -105,35 +132,90 @@ function updateDashboard() {
             fGram += item.gram; fIdr += item.idr;
             const row = tbody.insertRow();
             row.onclick = () => openModal(item);
-            row.innerHTML = `<td>${d.getDate()}/${d.getMonth()+1}</td><td>${item.note}</td><td>${item.idr.toLocaleString()}</td><td>${item.gram.toFixed(4)}</td>`;
+            row.innerHTML = `
+                <td>${d.getDate()}/${d.getMonth()+1}</td>
+                <td>${item.note}</td>
+                <td>${item.idr.toLocaleString('id-ID')}</td>
+                <td>${item.gram.toFixed(4)}</td>
+            `;
         }
     });
 
     document.getElementById('total-gram-all').innerText = tGramAll.toFixed(4) + " Gr";
     document.getElementById('total-idr-all').innerText = "Rp " + tIdrAll.toLocaleString('id-ID');
-    document.getElementById('foot-idr').innerText = "Rp " + fIdr.toLocaleString();
+    document.getElementById('foot-idr').innerText = "Rp " + fIdr.toLocaleString('id-ID');
     document.getElementById('foot-gram').innerText = fGram.toFixed(4);
 }
 
-// Fungsi Modal & Form Reset (Sama seperti sebelumnya)
+// --- 4. FUNGSI PENDUKUNG ---
 function openModal(item) {
     selectedId = item.id;
-    document.getElementById('modal-body').innerHTML = `<p><strong>Keterangan:</strong> ${item.note}</p><p><strong>Nominal:</strong> Rp ${item.idr.toLocaleString()}</p><p><strong>Berat:</strong> ${item.gram.toFixed(4)} Gr</p>`;
+    document.getElementById('modal-body').innerHTML = `
+        <p><strong>Tanggal:</strong> ${item.date}</p>
+        <p><strong>Keterangan:</strong> ${item.note}</p>
+        <p><strong>Nominal:</strong> Rp ${item.idr.toLocaleString('id-ID')}</p>
+        <p><strong>Berat:</strong> ${item.gram.toFixed(4)} Gr</p>
+    `;
     document.getElementById('detailModal').style.display = 'block';
 }
-function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
-function resetForm() {
-    document.getElementById('edit-id').value = ""; document.getElementById('input-date').valueAsDate = new Date();
-    document.getElementById('note').value = ""; document.getElementById('input-idr').value = "";
-    document.getElementById('input-gram').value = ""; document.getElementById('form-title').innerText = "Input";
-    document.getElementById('btn-save').innerText = "Simpan"; document.getElementById('btn-cancel').style.display = "none";
+
+function closeModal() { 
+    document.getElementById('detailModal').style.display = 'none'; 
 }
+
 function prepareEdit() {
     const item = transactions.find(t => t.id === selectedId);
-    document.getElementById('edit-id').value = item.id; document.getElementById('input-date').value = item.date;
-    document.getElementById('note').value = item.note; document.getElementById('input-idr').value = item.idr;
+    document.getElementById('edit-id').value = item.id; 
+    document.getElementById('input-date').value = item.date;
+    document.getElementById('note').value = item.note; 
+    document.getElementById('input-idr').value = item.idr;
     document.getElementById('input-gram').value = item.gram;
-    document.getElementById('form-title').innerText = "Edit"; document.getElementById('btn-save').innerText = "Update";
-    document.getElementById('btn-cancel').style.display = "block"; closeModal();
+    
+    document.getElementById('form-title').innerText = "Edit Transaksi"; 
+    document.getElementById('btn-save').innerText = "Update Cloud"; 
+    document.getElementById('btn-cancel').style.display = "block"; 
+    closeModal();
+    window.scrollTo(0,0);
 }
-function changeYear(step) { document.getElementById('filter-year').value = parseInt(document.getElementById('filter-year').value) + step; updateDashboard(); }
+
+function resetForm() {
+    document.getElementById('edit-id').value = ""; 
+    document.getElementById('input-date').valueAsDate = new Date();
+    document.getElementById('note').value = ""; 
+    document.getElementById('input-idr').value = "";
+    document.getElementById('input-gram').value = ""; 
+    document.getElementById('form-title').innerText = "Input Transaksi";
+    document.getElementById('btn-save').innerText = "Simpan ke Cloud"; 
+    document.getElementById('btn-cancel').style.display = "none";
+}
+
+function changeYear(step) { 
+    const yearInput = document.getElementById('filter-year');
+    yearInput.value = parseInt(yearInput.value) + step; 
+    updateDashboard(); 
+}
+
+// --- 5. FUNGSI BACKUP (Opsional tapi berguna) ---
+function exportData() {
+    const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `backup_emas_${new Date().toLocaleDateString()}.json`;
+    a.click();
+}
+
+function importData(event) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const data = JSON.parse(e.target.result);
+        if(confirm(`Impor ${data.length} data ke Cloud?`)) {
+            const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
+            data.forEach(item => {
+                // Hapus ID lama agar Firestore buat ID baru
+                const {id, ...pureData} = item; 
+                userRef.add(pureData);
+            });
+        }
+    };
+    reader.readAsText(event.target.files[0]);
+}
