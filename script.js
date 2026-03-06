@@ -1,4 +1,3 @@
-// Data Dasar - Saldo awal sekarang dimulai dari 0
 let baseBalance = 0; 
 let transactions = JSON.parse(localStorage.getItem('yudi_emas_db')) || [];
 let selectedId = null;
@@ -18,15 +17,12 @@ function saveData() {
     if (!date || !note) return alert("Isi tanggal & keterangan!");
 
     if (id) {
-        // Mode Edit
         const index = transactions.findIndex(t => t.id == id);
         transactions[index] = { id: parseInt(id), date, note, idr, gram };
     } else {
-        // Mode Baru
         transactions.push({ id: Date.now(), date, note, idr, gram });
     }
 
-    // Urutkan berdasarkan tanggal
     transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
     localStorage.setItem('yudi_emas_db', JSON.stringify(transactions));
     resetForm();
@@ -34,6 +30,7 @@ function saveData() {
 }
 
 function updateDashboard() {
+    const filterYear = document.getElementById('filter-year').value;
     const filterMonth = document.getElementById('filter-month').value;
     const tbody = document.querySelector('#data-table tbody');
     tbody.innerHTML = '';
@@ -44,18 +41,26 @@ function updateDashboard() {
     let filteredIdr = 0;
 
     transactions.forEach(item => {
+        const d = new Date(item.date);
+        const itemYear = d.getFullYear().toString();
+        const itemMonth = d.getMonth().toString();
+
+        // Selalu hitung total akumulasi tanpa filter
         totalGramAll += item.gram;
         totalIdrAll += item.idr;
 
-        const m = new Date(item.date).getMonth().toString();
-        if (filterMonth === "all" || filterMonth === m) {
+        // Logika Filter Ganda: Tahun DAN Bulan
+        const matchYear = (filterYear === "all" || filterYear === itemYear);
+        const matchMonth = (filterMonth === "all" || filterMonth === itemMonth);
+
+        if (matchYear && matchMonth) {
             filteredGram += item.gram;
             filteredIdr += item.idr;
             
             const row = tbody.insertRow();
             row.onclick = () => openModal(item);
             row.innerHTML = `
-                <td>${item.date.split('-')[2]}/${item.date.split('-')[1]}</td>
+                <td>${d.getDate()}/${d.getMonth()+1}</td>
                 <td>${item.note}</td>
                 <td>${item.idr.toLocaleString('id-ID')}</td>
                 <td>${item.gram.toFixed(4)}</td>
@@ -69,7 +74,7 @@ function updateDashboard() {
     document.getElementById('foot-gram').innerText = filteredGram.toFixed(4);
 }
 
-// Logika Modal, Edit, Hapus, Export/Import tetap sama...
+// Fungsi Modal, Reset, Export, Import (Tetap sama seperti kode sebelumnya)
 function openModal(item) {
     selectedId = item.id;
     const body = document.getElementById('modal-body');
