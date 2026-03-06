@@ -3,9 +3,19 @@ let transactions = JSON.parse(localStorage.getItem('yudi_emas_db')) || [];
 let selectedId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Set default tanggal ke hari ini
     document.getElementById('input-date').valueAsDate = new Date();
+    // Set default filter tahun ke tahun saat ini
+    document.getElementById('filter-year').value = new Date().getFullYear();
     updateDashboard();
 });
+
+// Fungsi Tombol Up/Down Tahun
+function changeYear(step) {
+    const yearInput = document.getElementById('filter-year');
+    yearInput.value = parseInt(yearInput.value) + step;
+    updateDashboard();
+}
 
 function saveData() {
     const id = document.getElementById('edit-id').value;
@@ -32,6 +42,8 @@ function saveData() {
 function updateDashboard() {
     const filterYear = document.getElementById('filter-year').value;
     const filterMonth = document.getElementById('filter-month').value;
+    const filterSearch = document.getElementById('filter-search').value.toLowerCase();
+    
     const tbody = document.querySelector('#data-table tbody');
     tbody.innerHTML = '';
 
@@ -44,16 +56,18 @@ function updateDashboard() {
         const d = new Date(item.date);
         const itemYear = d.getFullYear().toString();
         const itemMonth = d.getMonth().toString();
+        const itemNote = item.note.toLowerCase();
 
-        // Selalu hitung total akumulasi tanpa filter
+        // Hitung total akumulasi tanpa filter
         totalGramAll += item.gram;
         totalIdrAll += item.idr;
 
-        // Logika Filter Ganda: Tahun DAN Bulan
-        const matchYear = (filterYear === "all" || filterYear === itemYear);
+        // Logika Filter: Tahun + Bulan + Pencarian Keterangan
+        const matchYear = (filterYear === "" || filterYear === itemYear);
         const matchMonth = (filterMonth === "all" || filterMonth === itemMonth);
+        const matchSearch = itemNote.includes(filterSearch);
 
-        if (matchYear && matchMonth) {
+        if (matchYear && matchMonth && matchSearch) {
             filteredGram += item.gram;
             filteredIdr += item.idr;
             
@@ -74,7 +88,7 @@ function updateDashboard() {
     document.getElementById('foot-gram').innerText = filteredGram.toFixed(4);
 }
 
-// Fungsi Modal, Reset, Export, Import (Tetap sama seperti kode sebelumnya)
+// Logika Modal, Reset, Export/Import tetap sama...
 function openModal(item) {
     selectedId = item.id;
     const body = document.getElementById('modal-body');
