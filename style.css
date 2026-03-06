@@ -2,64 +2,37 @@
     --gold: #b8860b;
     --dark: #2c3e50;
     --bg: #f4f7f6;
+    --red: #e74c3c;
+    --blue: #3498db;
 }
 
-body {
-    font-family: sans-serif;
-    background-color: var(--bg);
-    margin: 0; padding: 10px;
-}
-
+body { font-family: sans-serif; background-color: var(--bg); margin: 0; padding: 10px; }
 .container { max-width: 500px; margin: auto; }
-
-header { text-align: center; padding: 15px 0; }
+header { text-align: center; padding: 10px 0; }
 h1 { color: var(--gold); margin: 0; }
 
-.summary {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px; margin-bottom: 15px;
-}
-
-.card {
-    background: white; padding: 12px;
-    border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
+.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+.card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .card span { font-size: 0.7em; color: #777; display: block; }
-.card strong { font-size: 1em; color: var(--dark); }
+.card strong { font-size: 0.95em; color: var(--dark); }
 .highlight { grid-column: span 2; border-top: 4px solid var(--gold); }
 
-.form-section, .history {
-    background: white; padding: 15px;
-    border-radius: 8px; margin-bottom: 15px;
-}
+.form-section, .history { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
 
-input, select {
-    width: 100%; padding: 10px;
-    margin: 5px 0; border: 1px solid #ddd;
-    border-radius: 5px; box-sizing: border-box;
-}
+.btn-add { width: 100%; padding: 12px; background: var(--gold); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+.btn-sec { width: 100%; padding: 8px; background: #ddd; border: none; border-radius: 5px; cursor: pointer; }
 
-.btn-add {
-    width: 100%; padding: 12px;
-    background: var(--gold); color: white;
-    border: none; border-radius: 5px; font-weight: bold;
-    margin-top: 10px;
-}
+.history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+th, td { padding: 10px 5px; border-bottom: 1px solid #eee; text-align: left; }
+tbody tr:active { background-color: #f0f0f0; } /* Efek klik di HP */
 
-.history-header {
-    display: flex; justify-content: space-between;
-    align-items: center; margin-bottom: 10px;
-}
-
-.table-container { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
-tfoot tr { background: #f9f9f9; font-weight: bold; }
-
-.action-footer { display: flex; gap: 10px; }
-.btn-sec {
-    flex: 1; padding: 10px; background: #ddd;
-    border: none; border-radius: 5px; font-size: 0.8em;
-}
+/* MODAL STYLES */
+.modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+.modal-content { background: white; margin: 20% auto; padding: 20px; width: 80%; border-radius: 10px; }
+.modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.modal-actions button { padding: 10px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+.btn-edit { background: var(--blue); }
+.btn-delete { background: var(--red); }
+.btn-close { background: #95a5a6; }
