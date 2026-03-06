@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmasKu - Tracker Treasury</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>EmasKu 2026</h1>
+            <p class="subtitle">Monitoring Investasi Treasury</p>
+        </header>
+
+        <section class="summary">
+            <div class="card">
+                <span>Saldo Awal (2025)</span>
+                <strong id="base-balance">1.3701 Gr</strong>
+            </div>
+            <div class="card highlight">
+                <span>Total Saldo Emas</span>
+                <strong id="total-gram">1.3701 Gr</strong>
+            </div>
+            <div class="card">
+                <span>Total Investasi</span>
+                <strong id="total-idr">Rp 0</strong>
+            </div>
+        </section>
+
+        <section class="price-update">
+            <h3>Update Harga Emas Hari Ini</h3>
+            <div class="input-inline">
+                <input type="number" id="current-price" placeholder="Harga/Gram (Contoh: 1300000)">
+                <button onclick="calculateProfit()">Cek Estimasi</button>
+            </div>
+            <p id="profit-display"></p>
+        </section>
+
+        <section class="form-section">
+            <h3>Tambah Transaksi Baru</h3>
+            <input type="text" id="note" placeholder="Keterangan (Contoh: Panen Maret)">
+            <input type="number" id="input-idr" placeholder="Nominal Rupiah (IDR)">
+            <input type="number" step="0.0001" id="input-gram" placeholder="Berat Emas (Gram)">
+            <button class="btn-add" onclick="addData()">Tambah Ke Catatan</button>
+        </section>
+
+        <section class="history">
+            <h3>Riwayat Transaksi</h3>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>Ket</th>
+                            <th>Rupiah</th>
+                            <th>Gram</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
