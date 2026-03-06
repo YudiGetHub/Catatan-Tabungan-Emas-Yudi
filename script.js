@@ -1,4 +1,5 @@
-const baseBalance = 1.3701;
+// Data Dasar - Saldo awal sekarang dimulai dari 0
+let baseBalance = 0; 
 let transactions = JSON.parse(localStorage.getItem('yudi_emas_db')) || [];
 let selectedId = null;
 
@@ -25,6 +26,7 @@ function saveData() {
         transactions.push({ id: Date.now(), date, note, idr, gram });
     }
 
+    // Urutkan berdasarkan tanggal
     transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
     localStorage.setItem('yudi_emas_db', JSON.stringify(transactions));
     resetForm();
@@ -51,7 +53,7 @@ function updateDashboard() {
             filteredIdr += item.idr;
             
             const row = tbody.insertRow();
-            row.onclick = () => openModal(item); // Klik baris untuk detail
+            row.onclick = () => openModal(item);
             row.innerHTML = `
                 <td>${item.date.split('-')[2]}/${item.date.split('-')[1]}</td>
                 <td>${item.note}</td>
@@ -67,7 +69,7 @@ function updateDashboard() {
     document.getElementById('foot-gram').innerText = filteredGram.toFixed(4);
 }
 
-// MODAL LOGIC
+// Logika Modal, Edit, Hapus, Export/Import tetap sama...
 function openModal(item) {
     selectedId = item.id;
     const body = document.getElementById('modal-body');
@@ -80,9 +82,7 @@ function openModal(item) {
     document.getElementById('detailModal').style.display = 'block';
 }
 
-function closeModal() {
-    document.getElementById('detailModal').style.display = 'none';
-}
+function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
 
 function prepareEdit() {
     const item = transactions.find(t => t.id === selectedId);
@@ -91,11 +91,9 @@ function prepareEdit() {
     document.getElementById('note').value = item.note;
     document.getElementById('input-idr').value = item.idr;
     document.getElementById('input-gram').value = item.gram;
-    
     document.getElementById('form-title').innerText = "Edit Transaksi";
-    document.getElementById('btn-save').innerText = "Update Transaksi";
+    document.getElementById('btn-save').innerText = "Update";
     document.getElementById('btn-cancel').style.display = "block";
-    
     closeModal();
     window.scrollTo(0,0);
 }
@@ -112,7 +110,7 @@ function confirmDelete() {
 function resetForm() {
     document.getElementById('edit-id').value = "";
     document.getElementById('form-title').innerText = "Input Transaksi";
-    document.getElementById('btn-save').innerText = "Simpan Transaksi";
+    document.getElementById('btn-save').innerText = "Simpan";
     document.getElementById('btn-cancel').style.display = "none";
     document.getElementById('input-date').valueAsDate = new Date();
     document.getElementById('note').value = "";
@@ -120,4 +118,20 @@ function resetForm() {
     document.getElementById('input-gram').value = "";
 }
 
-// Export/Import tetap sama seperti sebelumnya...
+function exportData() {
+    const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "emas_yudi_backup.json";
+    a.click();
+}
+
+function importData(event) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        transactions = JSON.parse(e.target.result);
+        localStorage.setItem('yudi_emas_db', JSON.stringify(transactions));
+        updateDashboard();
+    };
+    reader.readAsText(event.target.files[0]);
+}
