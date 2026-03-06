@@ -9,14 +9,14 @@
 <body>
     <div class="container">
         <header>
-            <h1>EmasKu 2026</h1>
+            <h1>EmasKu</h1>
             <p class="subtitle">Pencatatan Mandiri Aset Treasury</p>
         </header>
 
         <section class="summary">
             <div class="card highlight">
                 <span>Total Seluruh Saldo Emas</span>
-                <strong id="total-gram-all">Rp 0 Gr</strong>
+                <strong id="total-gram-all">0.0000 Gr</strong>
             </div>
             <div class="card">
                 <span>Total Modal Investasi</span>
@@ -28,22 +28,40 @@
             <h3 id="form-title">Input Transaksi</h3>
             <input type="hidden" id="edit-id">
             <input type="date" id="input-date">
-            <input type="text" id="note" placeholder="Keterangan (Jan, Feb, dll)">
+            <input type="text" id="note" placeholder="Keterangan">
             <input type="number" id="input-idr" placeholder="Nominal IDR">
             <input type="number" step="0.0001" id="input-gram" placeholder="Berat Gram">
-            <button class="btn-add" id="btn-save" onclick="saveData()">Simpan Transaksi</button>
-            <button class="btn-sec" id="btn-cancel" onclick="resetForm()" style="display:none; margin-top:5px;">Batal Edit</button>
+            <button class="btn-add" id="btn-save" onclick="saveData()">Simpan</button>
+            <button class="btn-sec" id="btn-cancel" onclick="resetForm()" style="display:none; margin-top:5px;">Batal</button>
         </section>
 
         <section class="history">
-            <div class="history-header">
-                <h3>Riwayat</h3>
-                <select id="filter-month" onchange="updateDashboard()">
-                    <option value="all">Semua Bulan</option>
-                    <option value="0">Januari</option>
-                    <option value="1">Februari</option>
-                    <option value="2">Maret</option>
-                </select>
+            <div class="history-header" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                <h3>Riwayat Transaksi</h3>
+                <div style="display: flex; gap: 5px; width: 100%;">
+                    <select id="filter-year" onchange="updateDashboard()" style="flex: 1;">
+                        <option value="all">Semua Tahun</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                    <select id="filter-month" onchange="updateDashboard()" style="flex: 1;">
+                        <option value="all">Semua Bulan</option>
+                        <option value="0">Januari</option>
+                        <option value="1">Februari</option>
+                        <option value="2">Maret</option>
+                        <option value="3">April</option>
+                        <option value="4">Mei</option>
+                        <option value="5">Juni</option>
+                        <option value="6">Juli</option>
+                        <option value="7">Agustus</option>
+                        <option value="8">September</option>
+                        <option value="9">Oktober</option>
+                        <option value="10">November</option>
+                        <option value="11">Desember</option>
+                    </select>
+                </div>
             </div>
             
             <div class="table-container">
@@ -51,7 +69,7 @@
                     <thead>
                         <tr>
                             <th>Tgl</th>
-                            <th>Keterangan</th>
+                            <th>Ket</th>
                             <th>IDR</th>
                             <th>Gram</th>
                         </tr>
@@ -59,14 +77,13 @@
                     <tbody></tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="2">TOTAL</td>
+                            <td colspan="2">TOTAL FILTER</td>
                             <td id="foot-idr">Rp 0</td>
                             <td id="foot-gram">0.0000</td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            <p style="font-size: 0.75em; color: #888; margin-top: 10px;">*Klik baris untuk Edit atau Hapus.</p>
         </section>
 
         <div class="action-footer">
