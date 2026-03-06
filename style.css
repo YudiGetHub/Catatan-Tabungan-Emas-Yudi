@@ -6,6 +6,60 @@
     --blue: #3498db;
 }
 
+/* CSS PENTING UNTUK LOGIN */
+.login-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--dark); display: flex; align-items: center; justify-content: center; z-index: 9999;
+}
+
+.login-box {
+    background: white; padding: 30px; border-radius: 15px; text-align: center;
+    width: 85%; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.login-box input {
+    width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px;
+}
+
+.lock-icon { font-size: 50px; margin-bottom: 10px; }
+
+/* Struktur Halaman Utama */
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); margin: 0; padding: 10px; }
+.container { max-width: 500px; margin: auto; }
+
+/* Header & Logout */
+header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+h1 { color: var(--gold); margin: 0; font-size: 1.5em; }
+.btn-logout { background: none; border: 1px solid var(--gold); color: var(--gold); padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8em; }
+
+/* Sisanya (Card, Table, dll) tetap seperti sebelumnya */
+.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+.card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.highlight { grid-column: span 2; border-top: 5px solid var(--gold); }
+.card span { font-size: 0.75em; color: #888; display: block; }
+.card strong { font-size: 1.1em; color: var(--dark); }
+
+.form-section, .history { background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box; }
+.btn-add { width: 100%; padding: 12px; background: var(--gold); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+
+/* Filter Stepper */
+.filter-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.year-stepper { display: flex; flex: 1; border: 1px solid #eee; border-radius: 5px; overflow: hidden; }
+.year-stepper button { width: 40px; border: none; background: #f0f0f0; font-weight: bold; }
+.year-stepper input { border: none; text-align: center; margin: 0; }
+#filter-month { flex: 1.5; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+th, td { padding: 12px 5px; text-align: left; border-bottom: 1px solid #f9f9f9; }
+
+/* Modal */
+.modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
+.modal-content { background: white; margin: 25% auto; padding: 20px; width: 80%; border-radius: 15px; }
+.modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.modal-actions button { padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; }
+.btn-edit { background: var(--blue); } .btn-delete { background: var(--red); } .btn-close { background: #bbb; }
+
 body { font-family: sans-serif; background-color: var(--bg); margin: 0; padding: 10px; }
 .container { max-width: 500px; margin: auto; }
 header { text-align: center; padding: 10px 0; }
