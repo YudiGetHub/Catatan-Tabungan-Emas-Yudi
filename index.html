@@ -15,64 +15,84 @@
 
         <section class="summary">
             <div class="card highlight">
-                <span>Total Saldo Emas Saat Ini</span>
-                <strong id="total-gram">1.3701 Gr</strong>
+                <span>Total Keseluruhan Saldo Emas</span>
+                <strong id="total-gram-all">1.3701 Gr</strong>
             </div>
             <div class="card">
                 <span>Total Modal Investasi</span>
-                <strong id="total-idr">Rp 0</strong>
-            </div>
-            <div class="card">
-                <span>Saldo Awal (Des 2025)</span>
-                <strong>1.3701 Gr</strong>
+                <strong id="total-idr-all">Rp 0</strong>
             </div>
         </section>
 
         <section class="form-section">
-            <h3>Input Transaksi (Termasuk Backdate)</h3>
+            <h3>Input Transaksi</h3>
             <div class="input-group">
-                <label>Tanggal Transaksi:</label>
+                <label>Tanggal:</label>
                 <input type="date" id="input-date">
             </div>
             <div class="input-group">
                 <label>Keterangan:</label>
-                <input type="text" id="note" placeholder="Misal: Panen Januari #3">
+                <input type="text" id="note" placeholder="Misal: Panen Januari">
             </div>
             <div class="input-group">
-                <label>Nominal Rupiah (IDR):</label>
+                <label>Nominal (IDR):</label>
                 <input type="number" id="input-idr" placeholder="Contoh: 300000">
             </div>
             <div class="input-group">
-                <label>Berat Emas (Gram):</label>
+                <label>Berat (Gram):</label>
                 <input type="number" step="0.0001" id="input-gram" placeholder="Contoh: 0.1233">
             </div>
-            <p style="font-size: 0.8em; color: #666;">*Gunakan tanda minus (-) untuk transaksi penjualan emas.</p>
-            <button class="btn-add" onclick="addData()">Simpan Ke Catatan</button>
+            <button class="btn-add" onclick="addData()">Simpan Transaksi</button>
         </section>
 
         <section class="history">
-            <h3>Riwayat Transaksi Terstruktur</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3>Riwayat Transaksi</h3>
+                <select id="filter-month" onchange="updateDashboard()" style="padding: 5px; border-radius: 5px;">
+                    <option value="all">Semua Bulan</option>
+                    <option value="0">Januari</option>
+                    <option value="1">Februari</option>
+                    <option value="2">Maret</option>
+                    <option value="3">April</option>
+                    <option value="4">Mei</option>
+                    <option value="5">Juni</option>
+                    <option value="6">Juli</option>
+                    <option value="7">Agustus</option>
+                    <option value="8">September</option>
+                    <option value="9">Oktober</option>
+                    <option value="10">November</option>
+                    <option value="11">Desember</option>
+                </select>
+            </div>
+            
             <div class="table-container">
                 <table id="data-table">
                     <thead>
                         <tr>
                             <th>Tanggal</th>
-                            <th>Keterangan</th>
+                            <th>Ket</th>
                             <th>IDR</th>
                             <th>Gram</th>
-                            <th>Aksi</th>
+                            <th></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        </tbody>
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr style="background: #f1f1f1; font-weight: bold;">
+                            <td colspan="2">TOTAL (Filter)</td>
+                            <td id="foot-idr">Rp 0</td>
+                            <td id="foot-gram">0.0000</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </section>
         
         <div class="action-footer">
-            <button onclick="exportData()" class="btn-secondary">Download Backup (.json)</button>
+            <button onclick="exportData()" class="btn-secondary">Backup (.json)</button>
             <input type="file" id="importFile" onchange="importData(event)" style="display:none">
-            <button onclick="document.getElementById('importFile').click()" class="btn-secondary">Upload Backup</button>
+            <button onclick="document.getElementById('importFile').click()" class="btn-secondary">Upload Data</button>
         </div>
     </div>
     <script src="script.js"></script>
