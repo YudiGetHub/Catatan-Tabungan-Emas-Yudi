@@ -1,0 +1,18 @@
+{
+  "short_name": "EmasKu",
+  "name": "EmasKu - Tabungan Treasury",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/272/272530.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#2c3e50",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#b8860b",
+  "description": "Pencatatan Mandiri Aset Treasury Yudi"
+}
