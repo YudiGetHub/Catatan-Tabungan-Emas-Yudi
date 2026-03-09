@@ -17,7 +17,7 @@ let transactions = [];
 let selectedId = null;
 let currentUser = null;
 
-// --- 1. LOGIKA AUTHENTICATION ---
+// --- 1. AUTHENTICATION ---
 auth.onAuthStateChanged((user) => {
     const loginScreen = document.getElementById('login-screen');
     const mainApp = document.getElementById('main-app');
@@ -53,36 +53,24 @@ function handleLogout() {
 
 function forgotPassword() {
     const email = document.getElementById('login-email').value;
-    if (!email) return alert("Ketik email kamu di kotak login dulu!");
-    if (confirm("Kirim link reset password ke email: " + email + "?")) {
-        auth.sendPasswordResetEmail(email)
-            .then(() => alert("Email reset sudah dikirim! Cek inbox/spam kamu."))
-            .catch(err => alert("Gagal: " + err.message));
-    }
+    if (!email) return alert("Ketik email di kotak login!");
+    auth.sendPasswordResetEmail(email).then(() => alert("Email reset terkirim!")).catch(err => alert(err.message));
 }
 
 function changePassword() {
-    const newPass = prompt("Masukkan Password Baru (Minimal 6 Karakter):");
+    const newPass = prompt("Password Baru (Min 6 Karakter):");
     if (newPass && newPass.length >= 6) {
-        auth.currentUser.updatePassword(newPass)
-            .then(() => alert("Password berhasil diganti!"))
-            .catch(err => {
-                if (err.code === 'auth/requires-recent-login') {
-                    alert("Sesi habis. Silakan Logout & Login kembali untuk ganti password.");
-                } else { alert("Gagal: " + err.message); }
-            });
-    } else if (newPass) alert("Password minimal 6 karakter!");
+        auth.currentUser.updatePassword(newPass).then(() => alert("Berhasil!")).catch(err => alert(err.message));
+    }
 }
 
-// --- 2. LOGIKA DATABASE ---
+// --- 2. DATABASE ---
 function loadDataFromFirestore() {
     db.collection("users").doc(currentUser.uid).collection("emas")
     .orderBy("date", "desc") 
     .onSnapshot((snapshot) => {
         transactions = [];
-        snapshot.forEach((doc) => {
-            transactions.push({ id: doc.id, ...doc.data() });
-        });
+        snapshot.forEach((doc) => { transactions.push({ id: doc.id, ...doc.data() }); });
         updateDashboard();
     });
 }
@@ -95,7 +83,7 @@ function saveData() {
         idr: parseFloat(document.getElementById('input-idr').value) || 0,
         gram: parseFloat(document.getElementById('input-gram').value) || 0
     };
-    if (!data.date || !data.note) return alert("Lengkapi data!");
+    if (!data.date || !data.note) return alert("Data tidak lengkap!");
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
     if (id) {
         userRef.doc(id).update(data).then(() => resetForm());
@@ -105,13 +93,12 @@ function saveData() {
 }
 
 function confirmDelete() {
-    if(confirm("Hapus data dari cloud?")) {
-        db.collection("users").doc(currentUser.uid).collection("emas")
-        .doc(selectedId).delete().then(() => closeModal());
+    if(confirm("Hapus data?")) {
+        db.collection("users").doc(currentUser.uid).collection("emas").doc(selectedId).delete().then(() => closeModal());
     }
 }
 
-// --- 3. LOGIKA DASHBOARD ---
+// --- 3. DASHBOARD ---
 function updateDashboard() {
     const filterYear = document.getElementById('filter-year').value;
     const filterMonth = document.getElementById('filter-month').value;
@@ -132,12 +119,7 @@ function updateDashboard() {
             fGram += item.gram; fIdr += item.idr;
             const row = tbody.insertRow();
             row.onclick = () => openModal(item);
-            row.innerHTML = `
-                <td>${d.getDate()}/${d.getMonth()+1}</td>
-                <td>${item.note}</td>
-                <td>${item.idr.toLocaleString('id-ID')}</td>
-                <td>${item.gram.toFixed(4)}</td>
-            `;
+            row.innerHTML = `<td>${d.getDate()}/${d.getMonth()+1}</td><td>${item.note}</td><td>${item.idr.toLocaleString('id-ID')}</td><td>${item.gram.toFixed(4)}</td>`;
         }
     });
 
@@ -177,9 +159,13 @@ function prepareEdit() {
     document.getElementById('btn-save').innerText = "Update Cloud"; 
     document.getElementById('btn-cancel').style.display = "block"; closeModal(); window.scrollTo(0,0);
 }
-function changeYear(step) { document.getElementById('filter-year').value = parseInt(document.getElementById('filter-year').value) + step; updateDashboard(); }
+function changeYear(step) { 
+    const input = document.getElementById('filter-year');
+    input.value = parseInt(input.value) + step; 
+    updateDashboard(); 
+}
 
-// --- 5. BACKUP & IMPORT ---
+// --- 5. BACKUP ---
 function exportData() {
     const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
     const a = document.createElement('a');
