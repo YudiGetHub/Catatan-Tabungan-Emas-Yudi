@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EmasKu - Treasury Yudi</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#b8860b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EmasKu">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/272/272530.png">
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -111,7 +119,16 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script> 
+    
     <script src="script.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('data:text/javascript,console.log("SW Registered");');
+            });
+        }
+    </script>
     
 </body>
 </html>
