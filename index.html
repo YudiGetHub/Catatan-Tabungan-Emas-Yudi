@@ -24,6 +24,11 @@
             <input type="email" id="login-email" placeholder="Email">
             <input type="password" id="login-pass" placeholder="Password">
             <button onclick="handleLogin()" class="btn-add">Masuk</button>
+            
+            <p style="margin-top: 15px;">
+                <a href="#" onclick="forgotPassword()" style="color: var(--gold); font-size: 0.85em; text-decoration: none; font-weight: bold;">Lupa Password?</a>
+            </p>
+            
             <p id="login-error" style="color:red; font-size: 0.8em; margin-top:10px; display:none;"></p>
         </div>
     </div>
@@ -97,10 +102,11 @@
             </div>
         </section>
 
-        <div class="action-footer" style="display: flex; gap: 10px; margin-top: 15px;">
+        <div class="action-footer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <button onclick="exportData()" class="btn-sec">Backup JSON</button>
+            <button onclick="changePassword()" class="btn-sec" style="color: var(--blue);">Ganti Password</button>
             <input type="file" id="importFile" onchange="importData(event)" style="display:none">
-            <button onclick="document.getElementById('importFile').click()" class="btn-sec">Upload JSON</button>
+            <button onclick="document.getElementById('importFile').click()" class="btn-sec" style="grid-column: span 2;">Upload JSON</button>
         </div>
     </div>
 
