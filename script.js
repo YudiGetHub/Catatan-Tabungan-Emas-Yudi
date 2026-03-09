@@ -9,7 +9,6 @@ const firebaseConfig = {
   measurementId: "G-VMNGN5SJ30"
 };
 
-// Inisialisasi Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -22,17 +21,13 @@ let currentUser = null;
 auth.onAuthStateChanged((user) => {
     const loginScreen = document.getElementById('login-screen');
     const mainApp = document.getElementById('main-app');
-
     if (user) {
         currentUser = user;
         loginScreen.style.display = 'none';
         mainApp.style.display = 'block';
-        
-        // Set default filter & input ke waktu saat ini
         const now = new Date();
         document.getElementById('input-date').valueAsDate = now;
         document.getElementById('filter-year').value = now.getFullYear();
-        
         loadDataFromFirestore(); 
     } else {
         currentUser = null;
@@ -45,11 +40,7 @@ function handleLogin() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
     const errorMsg = document.getElementById('login-error');
-
-    if(!email || !pass) {
-        return alert("Masukkan email dan password!");
-    }
-
+    if(!email || !pass) return alert("Masukkan email dan password!");
     auth.signInWithEmailAndPassword(email, pass).catch(err => {
         errorMsg.innerText = "Gagal Masuk: " + err.message;
         errorMsg.style.display = 'block';
@@ -57,25 +48,16 @@ function handleLogin() {
 }
 
 function handleLogout() {
-    if(confirm("Apakah Anda ingin keluar?")) {
-        auth.signOut();
-    }
+    if(confirm("Apakah Anda ingin keluar?")) auth.signOut();
 }
 
-// --- FITUR PASSWORD (TAMBAHAN BARU) ---
 function forgotPassword() {
     const email = document.getElementById('login-email').value;
-    if (!email) {
-        return alert("Ketik email kamu di kotak login dulu!");
-    }
-    if (confirm("Kirim link ganti password ke email: " + email + "?")) {
+    if (!email) return alert("Ketik email kamu di kotak login dulu!");
+    if (confirm("Kirim link reset password ke email: " + email + "?")) {
         auth.sendPasswordResetEmail(email)
-            .then(() => {
-                alert("Email reset sudah dikirim! Cek inbox atau folder spam kamu.");
-            })
-            .catch(err => {
-                alert("Gagal: " + err.message);
-            });
+            .then(() => alert("Email reset sudah dikirim! Cek inbox/spam kamu."))
+            .catch(err => alert("Gagal: " + err.message));
     }
 }
 
@@ -83,22 +65,16 @@ function changePassword() {
     const newPass = prompt("Masukkan Password Baru (Minimal 6 Karakter):");
     if (newPass && newPass.length >= 6) {
         auth.currentUser.updatePassword(newPass)
-            .then(() => {
-                alert("Password berhasil diganti!");
-            })
+            .then(() => alert("Password berhasil diganti!"))
             .catch(err => {
                 if (err.code === 'auth/requires-recent-login') {
                     alert("Sesi habis. Silakan Logout & Login kembali untuk ganti password.");
-                } else {
-                    alert("Gagal: " + err.message);
-                }
+                } else { alert("Gagal: " + err.message); }
             });
-    } else if (newPass) {
-        alert("Password minimal 6 karakter!");
-    }
+    } else if (newPass) alert("Password minimal 6 karakter!");
 }
 
-// --- 2. LOGIKA DATABASE FIRESTORE ---
+// --- 2. LOGIKA DATABASE ---
 function loadDataFromFirestore() {
     db.collection("users").doc(currentUser.uid).collection("emas")
     .orderBy("date", "desc") 
@@ -108,8 +84,6 @@ function loadDataFromFirestore() {
             transactions.push({ id: doc.id, ...doc.data() });
         });
         updateDashboard();
-    }, (error) => {
-        console.error("Firestore Error: ", error);
     });
 }
 
@@ -121,59 +95,41 @@ function saveData() {
         idr: parseFloat(document.getElementById('input-idr').value) || 0,
         gram: parseFloat(document.getElementById('input-gram').value) || 0
     };
-
-    if (!data.date || !data.note) {
-        return alert("Lengkapi tanggal dan keterangan!");
-    }
-
+    if (!data.date || !data.note) return alert("Lengkapi data!");
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
-
     if (id) {
-        userRef.doc(id).update(data)
-            .then(() => resetForm())
-            .catch(err => alert("Gagal update: " + err.message));
+        userRef.doc(id).update(data).then(() => resetForm());
     } else {
-        userRef.add(data)
-            .then(() => resetForm())
-            .catch(err => alert("Gagal simpan: " + err.message));
+        userRef.add(data).then(() => resetForm());
     }
 }
 
 function confirmDelete() {
-    if(confirm("Hapus data ini dari cloud?")) {
+    if(confirm("Hapus data dari cloud?")) {
         db.collection("users").doc(currentUser.uid).collection("emas")
-        .doc(selectedId).delete()
-            .then(() => closeModal())
-            .catch(err => alert("Gagal hapus: " + err.message));
+        .doc(selectedId).delete().then(() => closeModal());
     }
 }
 
-// --- 3. LOGIKA DASHBOARD & UI ---
+// --- 3. LOGIKA DASHBOARD ---
 function updateDashboard() {
     const filterYear = document.getElementById('filter-year').value;
     const filterMonth = document.getElementById('filter-month').value;
     const filterSearch = document.getElementById('filter-search').value.toLowerCase();
     const tbody = document.querySelector('#data-table tbody');
-    
     tbody.innerHTML = '';
 
-    let tGramAll = 0; 
-    let tIdrAll = 0;
-    let fGram = 0; 
-    let fIdr = 0;
+    let tGramAll = 0, tIdrAll = 0, fGram = 0, fIdr = 0;
 
     transactions.forEach(item => {
         const d = new Date(item.date);
-        tGramAll += item.gram;
-        tIdrAll += item.idr;
-
+        tGramAll += item.gram; tIdrAll += item.idr;
         const mY = (filterYear === "" || filterYear === d.getFullYear().toString());
         const mM = (filterMonth === "all" || filterMonth === d.getMonth().toString());
         const mS = item.note.toLowerCase().includes(filterSearch);
 
         if (mY && mM && mS) {
-            fGram += item.gram; 
-            fIdr += item.idr;
+            fGram += item.gram; fIdr += item.idr;
             const row = tbody.insertRow();
             row.onclick = () => openModal(item);
             row.innerHTML = `
@@ -191,7 +147,7 @@ function updateDashboard() {
     document.getElementById('foot-gram').innerText = fGram.toFixed(4);
 }
 
-// --- 4. FUNGSI PENDUKUNG ---
+// --- 4. UI HELPER ---
 function openModal(item) {
     selectedId = item.id;
     document.getElementById('modal-body').innerHTML = `
@@ -202,11 +158,14 @@ function openModal(item) {
     `;
     document.getElementById('detailModal').style.display = 'block';
 }
-
-function closeModal() { 
-    document.getElementById('detailModal').style.display = 'none'; 
+function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+function resetForm() {
+    document.getElementById('edit-id').value = ""; 
+    document.getElementById('input-date').valueAsDate = new Date();
+    document.getElementById('note').value = ""; document.getElementById('input-idr').value = "";
+    document.getElementById('input-gram').value = ""; document.getElementById('form-title').innerText = "Input Transaksi";
+    document.getElementById('btn-save').innerText = "Simpan ke Cloud"; document.getElementById('btn-cancel').style.display = "none";
 }
-
 function prepareEdit() {
     const item = transactions.find(t => t.id === selectedId);
     document.getElementById('edit-id').value = item.id; 
@@ -216,29 +175,11 @@ function prepareEdit() {
     document.getElementById('input-gram').value = item.gram;
     document.getElementById('form-title').innerText = "Edit Transaksi"; 
     document.getElementById('btn-save').innerText = "Update Cloud"; 
-    document.getElementById('btn-cancel').style.display = "block"; 
-    closeModal();
-    window.scrollTo(0,0);
+    document.getElementById('btn-cancel').style.display = "block"; closeModal(); window.scrollTo(0,0);
 }
+function changeYear(step) { document.getElementById('filter-year').value = parseInt(document.getElementById('filter-year').value) + step; updateDashboard(); }
 
-function resetForm() {
-    document.getElementById('edit-id').value = ""; 
-    document.getElementById('input-date').valueAsDate = new Date();
-    document.getElementById('note').value = ""; 
-    document.getElementById('input-idr').value = "";
-    document.getElementById('input-gram').value = ""; 
-    document.getElementById('form-title').innerText = "Input Transaksi";
-    document.getElementById('btn-save').innerText = "Simpan ke Cloud"; 
-    document.getElementById('btn-cancel').style.display = "none";
-}
-
-function changeYear(step) { 
-    const yearInput = document.getElementById('filter-year');
-    yearInput.value = parseInt(yearInput.value) + step; 
-    updateDashboard(); 
-}
-
-// --- 5. FUNGSI BACKUP & IMPORT ---
+// --- 5. BACKUP & IMPORT ---
 function exportData() {
     const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
     const a = document.createElement('a');
@@ -246,17 +187,13 @@ function exportData() {
     a.download = `backup_emas_${new Date().toLocaleDateString()}.json`;
     a.click();
 }
-
 function importData(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         const data = JSON.parse(e.target.result);
         if(confirm(`Impor ${data.length} data ke Cloud?`)) {
             const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
-            data.forEach(item => {
-                const {id, ...pureData} = item; 
-                userRef.add(pureData);
-            });
+            data.forEach(item => { const {id, ...pureData} = item; userRef.add(pureData); });
         }
     };
     reader.readAsText(event.target.files[0]);
