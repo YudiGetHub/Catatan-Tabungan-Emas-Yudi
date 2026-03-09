@@ -44,11 +44,11 @@
 
         <section class="summary">
             <div class="card highlight">
-                <span>Total Seluruh Saldo Emas</span>
+                <span>Total Emas</span>
                 <strong id="total-gram-all">0.0000 Gr</strong>
             </div>
             <div class="card">
-                <span>Total Modal Investasi</span>
+                <span>Total Modal</span>
                 <strong id="total-idr-all">Rp 0</strong>
             </div>
         </section>
@@ -102,7 +102,7 @@
             </div>
         </section>
 
-        <div class="action-footer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+        <div class="action-footer">
             <button onclick="exportData()" class="btn-sec">Backup JSON</button>
             <button onclick="changePassword()" class="btn-sec" style="color: var(--blue);">Ganti Password</button>
             <input type="file" id="importFile" onchange="importData(event)" style="display:none">
@@ -135,6 +135,5 @@
             });
         }
     </script>
-    
 </body>
 </html>
