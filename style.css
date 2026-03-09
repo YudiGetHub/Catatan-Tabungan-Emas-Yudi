@@ -29,7 +29,7 @@ body {
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    z-index: 9999; /* Sangat tinggi agar selalu di depan */
+    z-index: 9999;
 }
 
 .login-box {
@@ -50,6 +50,12 @@ body {
     border: 1px solid #ddd; 
     border-radius: 8px;
     box-sizing: border-box;
+}
+
+/* Tambahan: Style link Lupa Password */
+.login-box a:hover {
+    text-decoration: underline !important;
+    opacity: 0.8;
 }
 
 .lock-icon { font-size: 50px; margin-bottom: 10px; }
@@ -132,6 +138,7 @@ input, select {
     cursor: pointer; 
     font-size: 0.9em; 
     color: #555;
+    font-weight: 500;
 }
 
 /* FILTER SYSTEM */
@@ -203,5 +210,11 @@ tfoot tr { background: #fdfaf0; font-weight: bold; }
 .btn-delete { background: var(--red); }
 .btn-close { background: var(--gray); }
 
-/* FOOTER ACTIONS */
-.action-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+/* FOOTER ACTIONS - Menggunakan Grid agar seimbang */
+.action-footer { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 10px; 
+    margin-top: 20px; 
+    margin-bottom: 20px;
+}
