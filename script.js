@@ -27,9 +27,12 @@ auth.onAuthStateChanged((user) => {
         currentUser = user;
         loginScreen.style.display = 'none';
         mainApp.style.display = 'block';
-        // Set tanggal default ke hari ini saat masuk
-        document.getElementById('input-date').valueAsDate = new Date();
-        document.getElementById('filter-year').value = new Date().getFullYear();
+        
+        // Set default filter & input ke waktu saat ini
+        const now = new Date();
+        document.getElementById('input-date').valueAsDate = now;
+        document.getElementById('filter-year').value = now.getFullYear();
+        
         loadDataFromFirestore(); 
     } else {
         currentUser = null;
@@ -59,9 +62,8 @@ function handleLogout() {
 
 // --- 2. LOGIKA DATABASE FIRESTORE ---
 function loadDataFromFirestore() {
-    // Real-time listener: data update otomatis tanpa refresh
     db.collection("users").doc(currentUser.uid).collection("emas")
-    .orderBy("date", "desc") // Menampilkan data terbaru di atas
+    .orderBy("date", "desc") 
     .onSnapshot((snapshot) => {
         transactions = [];
         snapshot.forEach((doc) => {
@@ -87,24 +89,16 @@ function saveData() {
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
 
     if (id) {
-        // Update data yang sudah ada
-        userRef.doc(id).update(data).then(() => {
-            resetForm();
-        }).catch(err => alert("Gagal update: " + err.message));
+        userRef.doc(id).update(data).then(() => resetForm()).catch(err => alert("Gagal update: " + err.message));
     } else {
-        // Tambah data baru
-        userRef.add(data).then(() => {
-            resetForm();
-        }).catch(err => alert("Gagal simpan: " + err.message));
+        userRef.add(data).then(() => resetForm()).catch(err => alert("Gagal simpan: " + err.message));
     }
 }
 
 function confirmDelete() {
-    if(confirm("Hapus data ini dari cloud? Tindakan ini tidak bisa dibatalkan.")) {
+    if(confirm("Hapus data ini dari cloud?")) {
         db.collection("users").doc(currentUser.uid).collection("emas")
-        .doc(selectedId).delete().then(() => {
-            closeModal();
-        }).catch(err => alert("Gagal hapus: " + err.message));
+        .doc(selectedId).delete().then(() => closeModal()).catch(err => alert("Gagal hapus: " + err.message));
     }
 }
 
@@ -159,9 +153,7 @@ function openModal(item) {
     document.getElementById('detailModal').style.display = 'block';
 }
 
-function closeModal() { 
-    document.getElementById('detailModal').style.display = 'none'; 
-}
+function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
 
 function prepareEdit() {
     const item = transactions.find(t => t.id === selectedId);
@@ -170,7 +162,6 @@ function prepareEdit() {
     document.getElementById('note').value = item.note; 
     document.getElementById('input-idr').value = item.idr;
     document.getElementById('input-gram').value = item.gram;
-    
     document.getElementById('form-title').innerText = "Edit Transaksi"; 
     document.getElementById('btn-save').innerText = "Update Cloud"; 
     document.getElementById('btn-cancel').style.display = "block"; 
@@ -195,7 +186,7 @@ function changeYear(step) {
     updateDashboard(); 
 }
 
-// --- 5. FUNGSI BACKUP (Opsional tapi berguna) ---
+// --- 5. FUNGSI BACKUP ---
 function exportData() {
     const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
     const a = document.createElement('a');
@@ -211,11 +202,18 @@ function importData(event) {
         if(confirm(`Impor ${data.length} data ke Cloud?`)) {
             const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
             data.forEach(item => {
-                // Hapus ID lama agar Firestore buat ID baru
                 const {id, ...pureData} = item; 
                 userRef.add(pureData);
             });
         }
     };
     reader.readAsText(event.target.files[0]);
+}
+
+// --- 6. PWA SERVICE WORKER REGISTRATION (Penting untuk Standalone) ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('data:text/javascript,console.log("Service Worker Registered");')
+        .catch(err => console.log('Service Worker registration failed: ', err));
+    });
 }
