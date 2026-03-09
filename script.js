@@ -28,7 +28,6 @@ auth.onAuthStateChanged((user) => {
         loginScreen.style.display = 'none';
         mainApp.style.display = 'block';
         
-        // Set default filter & input ke waktu saat ini
         const now = new Date();
         document.getElementById('input-date').valueAsDate = now;
         document.getElementById('filter-year').value = now.getFullYear();
@@ -57,6 +56,39 @@ function handleLogin() {
 function handleLogout() {
     if(confirm("Apakah Anda ingin keluar?")) {
         auth.signOut();
+    }
+}
+
+// --- BARU: FITUR PASSWORD ---
+function forgotPassword() {
+    const email = document.getElementById('login-email').value;
+    if (!email) {
+        alert("Ketik email kamu di kotak login dulu!");
+        return;
+    }
+
+    if (confirm("Kirim link ganti password ke email: " + email + "?")) {
+        auth.sendPasswordResetEmail(email)
+            .then(() => alert("Email reset sudah dikirim! Silakan cek inbox atau folder spam kamu."))
+            .catch(err => alert("Gagal mengirim email: " + err.message));
+    }
+}
+
+function changePassword() {
+    const newPass = prompt("Masukkan Password Baru (Minimal 6 Karakter):");
+    
+    if (newPass && newPass.length >= 6) {
+        auth.currentUser.updatePassword(newPass)
+            .then(() => alert("Password berhasil diperbarui!"))
+            .catch(err => {
+                if (err.code === 'auth/requires-recent-login') {
+                    alert("Sesi keamanan habis. Silakan Keluar (Logout) lalu Masuk kembali untuk ganti password.");
+                } else {
+                    alert("Gagal ganti password: " + err.message);
+                }
+            });
+    } else if (newPass) {
+        alert("Password minimal 6 karakter!");
     }
 }
 
@@ -210,7 +242,7 @@ function importData(event) {
     reader.readAsText(event.target.files[0]);
 }
 
-// --- 6. PWA SERVICE WORKER REGISTRATION (Penting untuk Standalone) ---
+// --- 6. PWA SERVICE WORKER REGISTRATION ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('data:text/javascript,console.log("Service Worker Registered");')
