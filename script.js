@@ -28,6 +28,7 @@ auth.onAuthStateChanged((user) => {
         loginScreen.style.display = 'none';
         mainApp.style.display = 'block';
         
+        // Set default filter & input ke waktu saat ini
         const now = new Date();
         document.getElementById('input-date').valueAsDate = now;
         document.getElementById('filter-year').value = now.getFullYear();
@@ -45,7 +46,9 @@ function handleLogin() {
     const pass = document.getElementById('login-pass').value;
     const errorMsg = document.getElementById('login-error');
 
-    if(!email || !pass) return alert("Masukkan email dan password!");
+    if(!email || !pass) {
+        return alert("Masukkan email dan password!");
+    }
 
     auth.signInWithEmailAndPassword(email, pass).catch(err => {
         errorMsg.innerText = "Gagal Masuk: " + err.message;
@@ -59,32 +62,35 @@ function handleLogout() {
     }
 }
 
-// --- BARU: FITUR PASSWORD ---
+// --- FITUR PASSWORD (TAMBAHAN BARU) ---
 function forgotPassword() {
     const email = document.getElementById('login-email').value;
     if (!email) {
-        alert("Ketik email kamu di kotak login dulu!");
-        return;
+        return alert("Ketik email kamu di kotak login dulu!");
     }
-
     if (confirm("Kirim link ganti password ke email: " + email + "?")) {
         auth.sendPasswordResetEmail(email)
-            .then(() => alert("Email reset sudah dikirim! Silakan cek inbox atau folder spam kamu."))
-            .catch(err => alert("Gagal mengirim email: " + err.message));
+            .then(() => {
+                alert("Email reset sudah dikirim! Cek inbox atau folder spam kamu.");
+            })
+            .catch(err => {
+                alert("Gagal: " + err.message);
+            });
     }
 }
 
 function changePassword() {
     const newPass = prompt("Masukkan Password Baru (Minimal 6 Karakter):");
-    
     if (newPass && newPass.length >= 6) {
         auth.currentUser.updatePassword(newPass)
-            .then(() => alert("Password berhasil diperbarui!"))
+            .then(() => {
+                alert("Password berhasil diganti!");
+            })
             .catch(err => {
                 if (err.code === 'auth/requires-recent-login') {
-                    alert("Sesi keamanan habis. Silakan Keluar (Logout) lalu Masuk kembali untuk ganti password.");
+                    alert("Sesi habis. Silakan Logout & Login kembali untuk ganti password.");
                 } else {
-                    alert("Gagal ganti password: " + err.message);
+                    alert("Gagal: " + err.message);
                 }
             });
     } else if (newPass) {
@@ -116,21 +122,29 @@ function saveData() {
         gram: parseFloat(document.getElementById('input-gram').value) || 0
     };
 
-    if (!data.date || !data.note) return alert("Lengkapi tanggal dan keterangan!");
+    if (!data.date || !data.note) {
+        return alert("Lengkapi tanggal dan keterangan!");
+    }
 
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
 
     if (id) {
-        userRef.doc(id).update(data).then(() => resetForm()).catch(err => alert("Gagal update: " + err.message));
+        userRef.doc(id).update(data)
+            .then(() => resetForm())
+            .catch(err => alert("Gagal update: " + err.message));
     } else {
-        userRef.add(data).then(() => resetForm()).catch(err => alert("Gagal simpan: " + err.message));
+        userRef.add(data)
+            .then(() => resetForm())
+            .catch(err => alert("Gagal simpan: " + err.message));
     }
 }
 
 function confirmDelete() {
     if(confirm("Hapus data ini dari cloud?")) {
         db.collection("users").doc(currentUser.uid).collection("emas")
-        .doc(selectedId).delete().then(() => closeModal()).catch(err => alert("Gagal hapus: " + err.message));
+        .doc(selectedId).delete()
+            .then(() => closeModal())
+            .catch(err => alert("Gagal hapus: " + err.message));
     }
 }
 
@@ -140,10 +154,13 @@ function updateDashboard() {
     const filterMonth = document.getElementById('filter-month').value;
     const filterSearch = document.getElementById('filter-search').value.toLowerCase();
     const tbody = document.querySelector('#data-table tbody');
+    
     tbody.innerHTML = '';
 
-    let tGramAll = 0; let tIdrAll = 0;
-    let fGram = 0; let fIdr = 0;
+    let tGramAll = 0; 
+    let tIdrAll = 0;
+    let fGram = 0; 
+    let fIdr = 0;
 
     transactions.forEach(item => {
         const d = new Date(item.date);
@@ -155,7 +172,8 @@ function updateDashboard() {
         const mS = item.note.toLowerCase().includes(filterSearch);
 
         if (mY && mM && mS) {
-            fGram += item.gram; fIdr += item.idr;
+            fGram += item.gram; 
+            fIdr += item.idr;
             const row = tbody.insertRow();
             row.onclick = () => openModal(item);
             row.innerHTML = `
@@ -185,7 +203,9 @@ function openModal(item) {
     document.getElementById('detailModal').style.display = 'block';
 }
 
-function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+function closeModal() { 
+    document.getElementById('detailModal').style.display = 'none'; 
+}
 
 function prepareEdit() {
     const item = transactions.find(t => t.id === selectedId);
@@ -218,7 +238,7 @@ function changeYear(step) {
     updateDashboard(); 
 }
 
-// --- 5. FUNGSI BACKUP ---
+// --- 5. FUNGSI BACKUP & IMPORT ---
 function exportData() {
     const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
     const a = document.createElement('a');
@@ -240,12 +260,4 @@ function importData(event) {
         }
     };
     reader.readAsText(event.target.files[0]);
-}
-
-// --- 6. PWA SERVICE WORKER REGISTRATION ---
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('data:text/javascript,console.log("Service Worker Registered");')
-        .catch(err => console.log('Service Worker registration failed: ', err));
-    });
 }
