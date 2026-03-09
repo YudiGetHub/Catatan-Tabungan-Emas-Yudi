@@ -27,6 +27,7 @@ auth.onAuthStateChanged((user) => {
         mainApp.style.display = 'block';
         const now = new Date();
         document.getElementById('input-date').valueAsDate = now;
+        // Pastikan input tahun terisi tahun saat ini di awal
         document.getElementById('filter-year').value = now.getFullYear();
         loadDataFromFirestore(); 
     } else {
@@ -98,7 +99,7 @@ function confirmDelete() {
     }
 }
 
-// --- 3. DASHBOARD ---
+// --- 3. DASHBOARD (LOGIKA FILTER DIPERBAIKI) ---
 function updateDashboard() {
     const filterYear = document.getElementById('filter-year').value;
     const filterMonth = document.getElementById('filter-month').value;
@@ -109,22 +110,40 @@ function updateDashboard() {
     let tGramAll = 0, tIdrAll = 0, fGram = 0, fIdr = 0;
 
     transactions.forEach(item => {
-        const d = new Date(item.date);
-        tGramAll += item.gram; tIdrAll += item.idr;
-        const mY = (filterYear === "" || filterYear === d.getFullYear().toString());
-        const mM = (filterMonth === "all" || filterMonth === d.getMonth().toString());
+        // PERBAIKAN: Mengambil tahun dan bulan langsung dari string "YYYY-MM-DD"
+        // agar tidak terkena masalah zona waktu (timezone)
+        const dateParts = item.date.split("-"); // [YYYY, MM, DD]
+        const itemYear = dateParts[0];
+        const itemMonth = (parseInt(dateParts[1]) - 1).toString(); // Bulan di JS mulai dari 0
+
+        tGramAll += item.gram; 
+        tIdrAll += item.idr;
+
+        const mY = (filterYear === "" || filterYear === itemYear);
+        const mM = (filterMonth === "all" || filterMonth === itemMonth);
         const mS = item.note.toLowerCase().includes(filterSearch);
 
         if (mY && mM && mS) {
-            fGram += item.gram; fIdr += item.idr;
+            fGram += item.gram; 
+            fIdr += item.idr;
+            
             const row = tbody.insertRow();
             row.onclick = () => openModal(item);
-            row.innerHTML = `<td>${d.getDate()}/${d.getMonth()+1}</td><td>${item.note}</td><td>${item.idr.toLocaleString('id-ID')}</td><td>${item.gram.toFixed(4)}</td>`;
+            // Tampilan tanggal: DD/MM
+            row.innerHTML = `
+                <td>${dateParts[2]}/${dateParts[1]}</td>
+                <td>${item.note}</td>
+                <td>${item.idr.toLocaleString('id-ID')}</td>
+                <td>${item.gram.toFixed(4)}</td>
+            `;
         }
     });
 
+    // Update Angka Summary
     document.getElementById('total-gram-all').innerText = tGramAll.toFixed(4) + " Gr";
     document.getElementById('total-idr-all').innerText = "Rp " + tIdrAll.toLocaleString('id-ID');
+    
+    // Update Angka Total Filter
     document.getElementById('foot-idr').innerText = "Rp " + fIdr.toLocaleString('id-ID');
     document.getElementById('foot-gram').innerText = fGram.toFixed(4);
 }
@@ -140,14 +159,22 @@ function openModal(item) {
     `;
     document.getElementById('detailModal').style.display = 'block';
 }
-function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+
+function closeModal() { 
+    document.getElementById('detailModal').style.display = 'none'; 
+}
+
 function resetForm() {
     document.getElementById('edit-id').value = ""; 
     document.getElementById('input-date').valueAsDate = new Date();
-    document.getElementById('note').value = ""; document.getElementById('input-idr').value = "";
-    document.getElementById('input-gram').value = ""; document.getElementById('form-title').innerText = "Input Transaksi";
-    document.getElementById('btn-save').innerText = "Simpan ke Cloud"; document.getElementById('btn-cancel').style.display = "none";
+    document.getElementById('note').value = ""; 
+    document.getElementById('input-idr').value = "";
+    document.getElementById('input-gram').value = ""; 
+    document.getElementById('form-title').innerText = "Input Transaksi";
+    document.getElementById('btn-save').innerText = "Simpan ke Cloud"; 
+    document.getElementById('btn-cancel').style.display = "none";
 }
+
 function prepareEdit() {
     const item = transactions.find(t => t.id === selectedId);
     document.getElementById('edit-id').value = item.id; 
@@ -157,8 +184,11 @@ function prepareEdit() {
     document.getElementById('input-gram').value = item.gram;
     document.getElementById('form-title').innerText = "Edit Transaksi"; 
     document.getElementById('btn-save').innerText = "Update Cloud"; 
-    document.getElementById('btn-cancel').style.display = "block"; closeModal(); window.scrollTo(0,0);
+    document.getElementById('btn-cancel').style.display = "block"; 
+    closeModal(); 
+    window.scrollTo(0,0);
 }
+
 function changeYear(step) { 
     const input = document.getElementById('filter-year');
     input.value = parseInt(input.value) + step; 
@@ -173,13 +203,17 @@ function exportData() {
     a.download = `backup_emas_${new Date().toLocaleDateString()}.json`;
     a.click();
 }
+
 function importData(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         const data = JSON.parse(e.target.result);
         if(confirm(`Impor ${data.length} data ke Cloud?`)) {
             const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
-            data.forEach(item => { const {id, ...pureData} = item; userRef.add(pureData); });
+            data.forEach(item => { 
+                const {id, ...pureData} = item; 
+                userRef.add(pureData); 
+            });
         }
     };
     reader.readAsText(event.target.files[0]);
