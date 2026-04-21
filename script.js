@@ -63,6 +63,11 @@ function formatIDR(n) {
   return "Rp " + num.toLocaleString("id-ID");
 }
 
+function formatIDRPlain(n) {
+  const num = Number(n) || 0;
+  return num.toLocaleString("id-ID");
+}
+
 // parse "4.200.000" => 4200000
 function parseIDR(str) {
   if (str == null) return 0;
@@ -96,6 +101,11 @@ function setLoginMessage(text, isError = false) {
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
+}
+
+function formatRpPerGram(value) {
+  if (!isFinite(value) || value <= 0) return "-";
+  return "Rp " + Math.round(value).toLocaleString("id-ID") + "/Gr";
 }
 
 // ---------------- Views / Tabs ----------------
@@ -144,7 +154,7 @@ function populateYearSelects() {
   localStorage.setItem("recap-year", recapYear);
   localStorage.setItem("history-year", historyYear);
 
-  loadTargetsToUI(); // target mengikuti recap-year
+  loadTargetsToUI();
 }
 
 // ---------------- Targets (localStorage per user per year) ----------------
@@ -181,10 +191,7 @@ function loadTargetsToUI() {
   const year = document.getElementById("recap-year").value;
   const t = loadTargets(year);
 
-  // target-idr juga kita format ribuan
-  const targetIdrEl = document.getElementById("target-idr");
-  targetIdrEl.value = t.idr ? t.idr.toLocaleString("id-ID") : "";
-
+  document.getElementById("target-idr").value = t.idr ? t.idr.toLocaleString("id-ID") : "";
   document.getElementById("target-gram").value = t.gram ? t.gram : "";
 }
 
@@ -201,8 +208,7 @@ auth.onAuthStateChanged((user) => {
     setupIDRInput("input-idr");
     setupIDRInput("target-idr");
 
-    const now = new Date();
-    document.getElementById("input-date").valueAsDate = now;
+    document.getElementById("input-date").valueAsDate = new Date();
 
     loadDataFromFirestore();
     setView("dashboard");
@@ -279,10 +285,7 @@ function loadDataFromFirestore() {
       transactions = [];
       snapshot.forEach((doc) => transactions.push({ id: doc.id, ...doc.data() }));
 
-      // sort lokal (jaga-jaga)
       transactions.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-
-      // normalisasi ringan (kategori kosong => Lainnya)
       transactions = transactions.map(t => ({ ...t, category: t.category || "Lainnya" }));
 
       populateYearSelects();
@@ -343,7 +346,6 @@ function confirmDelete() {
 
 // ---------------- Rendering ----------------
 function updateAll() {
-  // saat recap-year berubah, reload target UI (karena target per tahun)
   localStorage.setItem("recap-year", document.getElementById("recap-year").value);
   loadTargetsToUI();
 
@@ -353,16 +355,24 @@ function updateAll() {
 
 function updateDashboard() {
   const recapYear = document.getElementById("recap-year").value || (availableYears[0] || String(new Date().getFullYear()));
+
   document.getElementById("year-recap-label").innerText = recapYear;
   document.getElementById("year-recap-label-2").innerText = recapYear;
+  document.getElementById("year-recap-label-3").innerText = recapYear;
   document.getElementById("monthly-year-label").innerText = recapYear;
 
   let tGramAll = 0, tIdrAll = 0;
   let tGramYear = 0, tIdrYear = 0;
 
-  // monthly sums for recapYear
+  // untuk avg price/gram: hanya transaksi gram > 0
+  let priceIdrAll = 0, priceGramAll = 0;
+  let priceIdrYear = 0, priceGramYear = 0;
+
+  // monthly
   const monthIDR = Array(12).fill(0);
   const monthGRAM = Array(12).fill(0);
+  const monthPriceIDR = Array(12).fill(0);  // idr yang gram>0
+  const monthPriceGRAM = Array(12).fill(0); // gram>0
 
   for (const item of transactions) {
     const p = getDateParts(item.date);
@@ -371,9 +381,16 @@ function updateDashboard() {
     const idr = Number(item.idr) || 0;
     const gram = Number(item.gram) || 0;
 
+    // total all-time
     tGramAll += gram;
     tIdrAll += idr;
 
+    if (gram > 0 && idr > 0) {
+      priceIdrAll += idr;
+      priceGramAll += gram;
+    }
+
+    // per tahun rekap
     if (p.y === recapYear) {
       tGramYear += gram;
       tIdrYear += idr;
@@ -382,25 +399,45 @@ function updateDashboard() {
       if (mi >= 0 && mi <= 11) {
         monthIDR[mi] += idr;
         monthGRAM[mi] += gram;
+        if (gram > 0 && idr > 0) {
+          monthPriceIDR[mi] += idr;
+          monthPriceGRAM[mi] += gram;
+        }
+      }
+
+      if (gram > 0 && idr > 0) {
+        priceIdrYear += idr;
+        priceGramYear += gram;
       }
     }
   }
 
+  // cards totals
   document.getElementById("total-gram-all").innerText = tGramAll.toFixed(4) + " Gr";
   document.getElementById("total-idr-all").innerText = formatIDR(tIdrAll);
 
   document.getElementById("total-gram-year").innerText = tGramYear.toFixed(4) + " Gr";
   document.getElementById("total-idr-year").innerText = formatIDR(tIdrYear);
 
+  // avg price cards
+  const avgAll = (priceGramAll > 0) ? (priceIdrAll / priceGramAll) : 0;
+  const avgYear = (priceGramYear > 0) ? (priceIdrYear / priceGramYear) : 0;
+
+  document.getElementById("avg-price-all").innerText = formatRpPerGram(avgAll);
+  document.getElementById("avg-price-year").innerText = formatRpPerGram(avgYear);
+
   // monthly table
   const monthlyBody = document.getElementById("monthly-body");
   monthlyBody.innerHTML = "";
   for (let i = 0; i < 12; i++) {
+    const avgM = (monthPriceGRAM[i] > 0) ? (monthPriceIDR[i] / monthPriceGRAM[i]) : 0;
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${MONTHS[i]}</td>
-      <td class="num">${monthIDR[i].toLocaleString("id-ID")}</td>
+      <td class="num">${formatIDRPlain(monthIDR[i])}</td>
       <td class="num">${monthGRAM[i].toFixed(4)}</td>
+      <td class="num">${avgM ? ("Rp " + Math.round(avgM).toLocaleString("id-ID")) : "-"}</td>
     `;
     monthlyBody.appendChild(tr);
   }
@@ -410,12 +447,10 @@ function updateDashboard() {
   const tIdr = targets.idr || 0;
   const tGram = targets.gram || 0;
 
-  // IDR progress
   const idrPct = tIdr > 0 ? clamp((tIdrYear / tIdr) * 100, 0, 100) : 0;
   document.getElementById("progress-idr-text").innerText = `${formatIDR(tIdrYear)} / ${formatIDR(tIdr)}`;
   document.getElementById("progress-idr-fill").style.width = `${idrPct}%`;
 
-  // Gram progress
   const gramPct = tGram > 0 ? clamp((tGramYear / tGram) * 100, 0, 100) : 0;
   document.getElementById("progress-gram-text").innerText = `${tGramYear.toFixed(4)} / ${tGram.toFixed(4)}`;
   document.getElementById("progress-gram-fill").style.width = `${gramPct}%`;
@@ -475,6 +510,7 @@ function openModal(item) {
 
   const idr = Number(item.idr) || 0;
   const gram = Number(item.gram) || 0;
+  const avg = (gram > 0 && idr > 0) ? (idr / gram) : 0;
 
   document.getElementById("modal-body").innerHTML = `
     <div><b>Tanggal</b>: ${toDateString(item.date)}</div>
@@ -482,6 +518,7 @@ function openModal(item) {
     <div><b>Keterangan</b>: ${item.note || ""}</div>
     <div><b>Nominal</b>: ${formatIDR(idr)}</div>
     <div><b>Berat</b>: ${gram.toFixed(4)} Gr</div>
+    <div><b>Harga/Gram (transaksi ini)</b>: ${formatRpPerGram(avg)}</div>
   `;
   document.getElementById("detailModal").style.display = "block";
 }
@@ -594,3 +631,11 @@ async function importData(event) {
 
   reader.readAsText(file);
 }
+
+// ---------------- init after DOM loaded ----------------
+document.addEventListener("DOMContentLoaded", () => {
+  // default view handled in auth state
+});
+
+// ---------------- Firestore + Year selects triggers ----------------
+// NOTE: populateYearSelects & updateAll dipanggil di loadDataFromFirestore snapshot
