@@ -19,18 +19,20 @@ let selectedId = null;
 let currentUser = null;
 let unsubscribeEmas = null;
 
+// tahun yang tersedia dari data
+let availableYears = []; // ["2026","2025",...]
+let currentView = "dashboard";
+
 // ---------------- Helpers ----------------
 function getDateParts(dateValue) {
   if (!dateValue) return null;
 
-  // string "YYYY-MM-DD"
   if (typeof dateValue === "string" && dateValue.includes("-")) {
     const [y, m, d] = dateValue.split("-");
     if (!y || !m || !d) return null;
     return { y, m, d, monthIndex: String(parseInt(m, 10) - 1) };
   }
 
-  // Firestore Timestamp (jaga-jaga)
   if (dateValue && typeof dateValue.toDate === "function") {
     const dt = dateValue.toDate();
     const y = String(dt.getFullYear());
@@ -39,7 +41,6 @@ function getDateParts(dateValue) {
     return { y, m, d, monthIndex: String(dt.getMonth()) };
   }
 
-  // Object {seconds, nanoseconds} (jaga-jaga dari JSON)
   if (typeof dateValue === "object" && typeof dateValue.seconds === "number") {
     const dt = new Date(dateValue.seconds * 1000);
     const y = String(dt.getFullYear());
@@ -56,9 +57,36 @@ function toDateString(dateValue) {
   return p ? `${p.y}-${p.m}-${p.d}` : "";
 }
 
-function formatIDR(num) {
-  const n = Number(num) || 0;
-  return "Rp " + n.toLocaleString("id-ID");
+function formatIDR(n) {
+  const num = Number(n) || 0;
+  return "Rp " + num.toLocaleString("id-ID");
+}
+
+// parse "4.200.000" => 4200000
+function parseIDR(str) {
+  if (str == null) return 0;
+  const digits = String(str).replace(/[^\d]/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+}
+
+function formatIDRInputValue(str) {
+  const n = parseIDR(str);
+  return n ? n.toLocaleString("id-ID") : "";
+}
+
+function setupIDRInput() {
+  const el = document.getElementById("input-idr");
+  if (!el) return;
+
+  el.addEventListener("input", () => {
+    // format sederhana (tanpa manajemen caret kompleks)
+    const formatted = formatIDRInputValue(el.value);
+    el.value = formatted;
+  });
+
+  el.addEventListener("blur", () => {
+    el.value = formatIDRInputValue(el.value);
+  });
 }
 
 function setLoginMessage(text, isError = false) {
@@ -66,6 +94,77 @@ function setLoginMessage(text, isError = false) {
   el.style.display = "block";
   el.classList.toggle("error", isError);
   el.innerText = text;
+}
+
+// ---------------- Views / Tabs ----------------
+function setView(view) {
+  currentView = view;
+
+  const views = ["dashboard", "input", "history"];
+  for (const v of views) {
+    document.getElementById(`view-${v}`).style.display = (v === view) ? "block" : "none";
+    document.getElementById(`tab-${v}`).classList.toggle("active", v === view);
+  }
+}
+
+function ensureDefaultYearSelection() {
+  const yearSelect = document.getElementById("filter-year");
+  if (!yearSelect) return;
+
+  // Prioritas:
+  // 1) terakhir dipakai (localStorage)
+  // 2) tahun terbaru yang ada di data
+  // 3) tahun sekarang
+  const saved = localStorage.getItem("filter-year");
+  const latest = availableYears[0] || String(new Date().getFullYear());
+  const desired = (saved && (saved === "all" || availableYears.includes(saved))) ? saved : latest;
+
+  yearSelect.value = desired;
+  localStorage.setItem("filter-year", desired);
+}
+
+function populateYearOptions() {
+  const yearSelect = document.getElementById("filter-year");
+  if (!yearSelect) return;
+
+  const yearsSet = new Set();
+  for (const t of transactions) {
+    const p = getDateParts(t.date);
+    if (p?.y) yearsSet.add(p.y);
+  }
+
+  availableYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a)); // desc
+
+  yearSelect.innerHTML = `
+    <option value="all">Semua Tahun</option>
+    ${availableYears.map(y => `<option value="${y}">${y}</option>`).join("")}
+  `;
+
+  ensureDefaultYearSelection();
+}
+
+// step tahun berdasarkan daftar tahun yang tersedia (desc)
+function stepYear(dir) {
+  const yearSelect = document.getElementById("filter-year");
+  if (!yearSelect) return;
+
+  const val = yearSelect.value;
+  if (val === "all") {
+    if (availableYears.length) {
+      yearSelect.value = availableYears[0];
+      updateDashboard();
+    }
+    return;
+  }
+
+  const idx = availableYears.indexOf(val);
+  if (idx === -1) return;
+
+  const nextIdx = idx + dir;
+  if (nextIdx < 0 || nextIdx >= availableYears.length) return;
+
+  yearSelect.value = availableYears[nextIdx];
+  updateDashboard();
 }
 
 // ---------------- Auth ----------------
@@ -78,19 +177,17 @@ auth.onAuthStateChanged((user) => {
     loginScreen.style.display = "none";
     mainApp.style.display = "block";
 
+    setupIDRInput();
+
     const now = new Date();
     document.getElementById("input-date").valueAsDate = now;
 
-    // Tahun rekap default: tahun sekarang (ini tidak menyaring tabel)
-    document.getElementById("filter-year").value = now.getFullYear();
-
     loadDataFromFirestore();
+    setView("dashboard");
   } else {
     currentUser = null;
-    if (unsubscribeEmas) {
-      unsubscribeEmas();
-      unsubscribeEmas = null;
-    }
+    if (unsubscribeEmas) { unsubscribeEmas(); unsubscribeEmas = null; }
+
     loginScreen.style.display = "flex";
     mainApp.style.display = "none";
   }
@@ -100,9 +197,7 @@ function handleLogin() {
   const email = (document.getElementById("login-email").value || "").trim();
   const pass = document.getElementById("login-pass").value || "";
 
-  const errorMsg = document.getElementById("login-error");
-  errorMsg.style.display = "none";
-
+  document.getElementById("login-error").style.display = "none";
   if (!email || !pass) return alert("Masukkan email dan password!");
 
   auth.signInWithEmailAndPassword(email, pass).catch((err) => {
@@ -124,10 +219,16 @@ function forgotPassword(ev) {
 
   setLoginMessage("Mengirim email reset password...");
 
-  auth.sendPasswordResetEmail(email)
+  // agar link reset mengarah balik ke domain vercel Anda
+  const actionCodeSettings = {
+    url: window.location.origin + "/",
+    handleCodeInApp: false
+  };
+
+  auth.sendPasswordResetEmail(email, actionCodeSettings)
     .then(() => {
       setLoginMessage("Berhasil! Cek Inbox / Spam untuk email reset.");
-      alert("Link reset password sudah dikirim. Cek Inbox / Spam.");
+      alert("Email reset terkirim. Cek Inbox / Spam.");
     })
     .catch((err) => {
       console.error(err);
@@ -149,64 +250,55 @@ function changePassword() {
 // ---------------- Firestore ----------------
 function loadDataFromFirestore() {
   const ref = db.collection("users").doc(currentUser.uid).collection("emas");
+  const debugEl = document.getElementById("debug-info");
+  if (debugEl) debugEl.innerText = `Login UID: ${currentUser.uid} | Memuat data...`;
 
   if (unsubscribeEmas) unsubscribeEmas();
 
-  // Coba orderBy date (string YYYY-MM-DD aman untuk sorting)
   unsubscribeEmas = ref.orderBy("date", "desc").onSnapshot(
     (snapshot) => {
       transactions = [];
       snapshot.forEach((doc) => transactions.push({ id: doc.id, ...doc.data() }));
+
+      // safety: sort lokal juga
+      transactions.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+      populateYearOptions();
       updateDashboard();
+
+      if (debugEl) debugEl.innerText = `Login UID: ${currentUser.uid} | Data: ${snapshot.size} dokumen`;
     },
     (err) => {
-      console.error("Firestore listener error (orderBy date):", err);
-
-      // Fallback tanpa orderBy (biar data tetap muncul)
-      if (unsubscribeEmas) unsubscribeEmas();
-      unsubscribeEmas = ref.onSnapshot(
-        (snapshot) => {
-          transactions = [];
-          snapshot.forEach((doc) => transactions.push({ id: doc.id, ...doc.data() }));
-
-          // sort lokal supaya tetap rapi
-          transactions.sort((a, b) => (String(b.date || "")).localeCompare(String(a.date || "")));
-          updateDashboard();
-        },
-        (err2) => {
-          console.error("Firestore listener error (no orderBy):", err2);
-          alert("Gagal memuat data: " + err2.message);
-        }
-      );
+      console.error("Firestore error:", err);
+      if (debugEl) debugEl.innerText = `Login UID: ${currentUser.uid} | ERROR: ${err.message}`;
+      alert("Gagal memuat data: " + err.message);
     }
   );
 }
 
+// ---------------- CRUD ----------------
 async function saveData() {
   const btn = document.getElementById("btn-save");
   btn.disabled = true;
 
   try {
     const id = document.getElementById("edit-id").value;
-
-    const dateStr = document.getElementById("input-date").value; // YYYY-MM-DD
+    const dateStr = document.getElementById("input-date").value;
     const note = (document.getElementById("note").value || "").trim();
-    const idr = parseFloat(document.getElementById("input-idr").value) || 0;
+
+    const idr = parseIDR(document.getElementById("input-idr").value);
     const gram = parseFloat(document.getElementById("input-gram").value) || 0;
 
     if (!dateStr || !note) return alert("Tanggal dan keterangan wajib diisi.");
 
     const data = { date: dateStr, note, idr, gram };
-
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
 
-    if (id) {
-      await userRef.doc(id).update(data);
-    } else {
-      await userRef.add(data);
-    }
+    if (id) await userRef.doc(id).update(data);
+    else await userRef.add(data);
 
     resetForm();
+    setView("history"); // setelah simpan, langsung ke riwayat (lebih enak)
   } catch (e) {
     console.error(e);
     alert("Gagal menyimpan: " + e.message);
@@ -217,7 +309,6 @@ async function saveData() {
 
 function confirmDelete() {
   if (!selectedId) return alert("Tidak ada data yang dipilih.");
-
   if (confirm("Hapus data?")) {
     db.collection("users").doc(currentUser.uid).collection("emas")
       .doc(selectedId)
@@ -227,80 +318,82 @@ function confirmDelete() {
   }
 }
 
-// ---------------- Dashboard ----------------
-// Tabel selalu semua tahun (filter hanya bulan+search).
-// Tahun dipakai untuk REKAP saja.
+// ---------------- Dashboard + History render ----------------
 function updateDashboard() {
-  const recapYear = String(document.getElementById("filter-year").value || new Date().getFullYear());
-  const filterMonth = document.getElementById("filter-month").value;
-  const filterSearch = (document.getElementById("filter-search").value || "").toLowerCase();
+  const yearVal = document.getElementById("filter-year")?.value || "all";
+  const filterMonth = document.getElementById("filter-month")?.value || "all";
+  const filterSearch = (document.getElementById("filter-search")?.value || "").toLowerCase();
 
-  // Label tahun rekap di kartu
+  localStorage.setItem("filter-year", yearVal);
+
+  const recapYear = (yearVal === "all")
+    ? (availableYears[0] || String(new Date().getFullYear()))
+    : yearVal;
+
   document.getElementById("year-recap-label").innerText = recapYear;
   document.getElementById("year-recap-label-2").innerText = recapYear;
 
-  const tbody = document.querySelector("#data-table tbody");
-  tbody.innerHTML = "";
-
+  // totals
   let tGramAll = 0, tIdrAll = 0;
   let tGramYear = 0, tIdrYear = 0;
   let fGram = 0, fIdr = 0;
 
-  transactions.forEach((item) => {
-    const parts = getDateParts(item.date);
-    if (!parts) return;
+  // render table (riwayat)
+  const tbody = document.querySelector("#data-table tbody");
+  if (tbody) tbody.innerHTML = "";
 
-    const itemYear = parts.y;
-    const itemMonth = parts.monthIndex;
+  for (const item of transactions) {
+    const p = getDateParts(item.date);
+    if (!p) continue;
 
     const idr = Number(item.idr) || 0;
     const gram = Number(item.gram) || 0;
     const note = item.note || "";
     const noteLower = note.toLowerCase();
 
-    // Total all-time
     tGramAll += gram;
     tIdrAll += idr;
 
-    // Rekap tahun dipilih
-    if (itemYear === recapYear) {
+    if (p.y === recapYear) {
       tGramYear += gram;
       tIdrYear += idr;
     }
 
-    // Filter untuk tabel (tanpa tahun)
-    const mM = (filterMonth === "all" || filterMonth === itemMonth);
+    // Filter riwayat (tahun benar-benar memfilter tabel)
+    const mY = (yearVal === "all" || p.y === yearVal);
+    const mM = (filterMonth === "all" || p.monthIndex === filterMonth);
     const mS = noteLower.includes(filterSearch);
 
-    if (mM && mS) {
+    if (mY && mM && mS) {
       fGram += gram;
       fIdr += idr;
 
-      const row = tbody.insertRow();
-      row.onclick = () => openModal(item);
+      if (tbody) {
+        const row = tbody.insertRow();
+        row.onclick = () => openModal(item);
 
-      row.innerHTML = `
-        <td>${parts.d}/${parts.m}/${parts.y}</td>
-        <td>${note}</td>
-        <td class="num">${idr.toLocaleString("id-ID")}</td>
-        <td class="num">${gram.toFixed(4)}</td>
-      `;
+        row.innerHTML = `
+          <td>${p.d}/${p.m}/${p.y}</td>
+          <td>${note}</td>
+          <td class="num">${idr.toLocaleString("id-ID")}</td>
+          <td class="num">${gram.toFixed(4)}</td>
+        `;
+      }
     }
-  });
+  }
 
-  // Update summary
+  // update dashboard cards
   document.getElementById("total-gram-all").innerText = tGramAll.toFixed(4) + " Gr";
   document.getElementById("total-idr-all").innerText = formatIDR(tIdrAll);
-
   document.getElementById("total-gram-year").innerText = tGramYear.toFixed(4) + " Gr";
   document.getElementById("total-idr-year").innerText = formatIDR(tIdrYear);
 
-  // Footer total tabel
+  // update history footer
   document.getElementById("foot-idr").innerText = formatIDR(fIdr);
   document.getElementById("foot-gram").innerText = fGram.toFixed(4);
 }
 
-// ---------------- UI Helpers ----------------
+// ---------------- Modal & Form ----------------
 function openModal(item) {
   selectedId = item.id;
 
@@ -313,7 +406,6 @@ function openModal(item) {
     <div><b>Nominal</b>: ${formatIDR(idr)}</div>
     <div><b>Berat</b>: ${gram.toFixed(4)} Gr</div>
   `;
-
   document.getElementById("detailModal").style.display = "block";
 }
 
@@ -322,7 +414,6 @@ function closeModal() {
 }
 
 function modalBackdropClose(e) {
-  // klik area gelap (bukan konten) untuk tutup modal
   if (e.target && e.target.id === "detailModal") closeModal();
 }
 
@@ -333,7 +424,7 @@ function resetForm() {
   document.getElementById("input-idr").value = "";
   document.getElementById("input-gram").value = "";
 
-  document.getElementById("form-title").innerText = "Input Transaksi";
+  document.getElementById("form-title").innerText = "Input Tabungan";
   document.getElementById("btn-save").innerText = "Simpan ke Cloud";
   document.getElementById("btn-cancel").style.display = "none";
 }
@@ -345,7 +436,7 @@ function prepareEdit() {
   document.getElementById("edit-id").value = item.id;
   document.getElementById("input-date").value = toDateString(item.date);
   document.getElementById("note").value = item.note || "";
-  document.getElementById("input-idr").value = Number(item.idr) || 0;
+  document.getElementById("input-idr").value = formatIDRInputValue(item.idr);
   document.getElementById("input-gram").value = Number(item.gram) || 0;
 
   document.getElementById("form-title").innerText = "Edit Transaksi";
@@ -353,20 +444,14 @@ function prepareEdit() {
   document.getElementById("btn-cancel").style.display = "inline-block";
 
   closeModal();
+  setView("input");
   window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function changeYear(step) {
-  const input = document.getElementById("filter-year");
-  const base = parseInt(input.value || new Date().getFullYear(), 10);
-  input.value = base + step;
-  updateDashboard();
 }
 
 // ---------------- Backup / Import ----------------
 function exportData() {
   const cleaned = transactions.map((t) => ({
-    date: toDateString(t.date),   // paksa string YYYY-MM-DD
+    date: toDateString(t.date),
     note: t.note ?? "",
     idr: Number(t.idr) || 0,
     gram: Number(t.gram) || 0
@@ -384,7 +469,6 @@ async function importData(event) {
   if (!file) return;
 
   const reader = new FileReader();
-
   reader.onload = async (e) => {
     let data;
     try {
@@ -399,7 +483,6 @@ async function importData(event) {
     try {
       const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
 
-      // Batch agar lebih cepat & rapi (maks 500 per batch)
       let batch = db.batch();
       let count = 0;
 
