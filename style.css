@@ -173,15 +173,12 @@ input:focus, select:focus{
   .target-grid{ grid-template-columns: 1fr; }
 }
 
-/* Summary cards */
+/* Summary cards (auto-fit biar fleksibel 4-6 card) */
 .summary{
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   margin-top: 6px;
-}
-@media (max-width: 900px){
-  .summary{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .card{
@@ -260,7 +257,7 @@ input:focus, select:focus{
 table{
   width: 100%;
   border-collapse: collapse;
-  min-width: 780px;
+  min-width: 860px;
   background: #fff;
 }
 thead th{
