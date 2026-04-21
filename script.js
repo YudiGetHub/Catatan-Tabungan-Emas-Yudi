@@ -19,9 +19,10 @@ let selectedId = null;
 let currentUser = null;
 let unsubscribeEmas = null;
 
-// tahun yang tersedia dari data
 let availableYears = []; // ["2026","2025",...]
 let currentView = "dashboard";
+
+const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
 // ---------------- Helpers ----------------
 function getDateParts(dateValue) {
@@ -74,16 +75,13 @@ function formatIDRInputValue(str) {
   return n ? n.toLocaleString("id-ID") : "";
 }
 
-function setupIDRInput() {
-  const el = document.getElementById("input-idr");
+function setupIDRInput(id) {
+  const el = document.getElementById(id);
   if (!el) return;
 
   el.addEventListener("input", () => {
-    // format sederhana (tanpa manajemen caret kompleks)
-    const formatted = formatIDRInputValue(el.value);
-    el.value = formatted;
+    el.value = formatIDRInputValue(el.value);
   });
-
   el.addEventListener("blur", () => {
     el.value = formatIDRInputValue(el.value);
   });
@@ -96,10 +94,13 @@ function setLoginMessage(text, isError = false) {
   el.innerText = text;
 }
 
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
 // ---------------- Views / Tabs ----------------
 function setView(view) {
   currentView = view;
-
   const views = ["dashboard", "input", "history"];
   for (const v of views) {
     document.getElementById(`view-${v}`).style.display = (v === view) ? "block" : "none";
@@ -107,64 +108,84 @@ function setView(view) {
   }
 }
 
-function ensureDefaultYearSelection() {
-  const yearSelect = document.getElementById("filter-year");
-  if (!yearSelect) return;
-
-  // Prioritas:
-  // 1) terakhir dipakai (localStorage)
-  // 2) tahun terbaru yang ada di data
-  // 3) tahun sekarang
-  const saved = localStorage.getItem("filter-year");
-  const latest = availableYears[0] || String(new Date().getFullYear());
-  const desired = (saved && (saved === "all" || availableYears.includes(saved))) ? saved : latest;
-
-  yearSelect.value = desired;
-  localStorage.setItem("filter-year", desired);
-}
-
-function populateYearOptions() {
-  const yearSelect = document.getElementById("filter-year");
-  if (!yearSelect) return;
-
+// ---------------- Year Selects ----------------
+function computeAvailableYears() {
   const yearsSet = new Set();
   for (const t of transactions) {
     const p = getDateParts(t.date);
     if (p?.y) yearsSet.add(p.y);
   }
+  availableYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+}
 
-  availableYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a)); // desc
+function populateYearSelects() {
+  computeAvailableYears();
 
-  yearSelect.innerHTML = `
+  const latest = availableYears[0] || String(new Date().getFullYear());
+  const savedRecap = localStorage.getItem("recap-year");
+  const savedHistory = localStorage.getItem("history-year");
+
+  const recapYear = (savedRecap && availableYears.includes(savedRecap)) ? savedRecap : latest;
+  const historyYear = (savedHistory && (savedHistory === "all" || availableYears.includes(savedHistory))) ? savedHistory : latest;
+
+  const recapSel = document.getElementById("recap-year");
+  recapSel.innerHTML = availableYears.length
+    ? availableYears.map(y => `<option value="${y}">${y}</option>`).join("")
+    : `<option value="${latest}">${latest}</option>`;
+  recapSel.value = recapYear;
+
+  const histSel = document.getElementById("history-year");
+  histSel.innerHTML = `
     <option value="all">Semua Tahun</option>
     ${availableYears.map(y => `<option value="${y}">${y}</option>`).join("")}
   `;
+  histSel.value = historyYear;
 
-  ensureDefaultYearSelection();
+  localStorage.setItem("recap-year", recapYear);
+  localStorage.setItem("history-year", historyYear);
+
+  loadTargetsToUI(); // target mengikuti recap-year
 }
 
-// step tahun berdasarkan daftar tahun yang tersedia (desc)
-function stepYear(dir) {
-  const yearSelect = document.getElementById("filter-year");
-  if (!yearSelect) return;
+// ---------------- Targets (localStorage per user per year) ----------------
+function targetKey(year) {
+  const uid = currentUser?.uid || "anonymous";
+  return `emasku_target_${uid}_${year}`;
+}
 
-  const val = yearSelect.value;
-  if (val === "all") {
-    if (availableYears.length) {
-      yearSelect.value = availableYears[0];
-      updateDashboard();
-    }
-    return;
+function loadTargets(year) {
+  try {
+    const raw = localStorage.getItem(targetKey(year));
+    if (!raw) return { idr: 0, gram: 0 };
+    const obj = JSON.parse(raw);
+    return {
+      idr: Number(obj.idr) || 0,
+      gram: Number(obj.gram) || 0
+    };
+  } catch {
+    return { idr: 0, gram: 0 };
   }
+}
 
-  const idx = availableYears.indexOf(val);
-  if (idx === -1) return;
+function saveTargets() {
+  const year = document.getElementById("recap-year").value;
+  const idr = parseIDR(document.getElementById("target-idr").value);
+  const gram = parseFloat(document.getElementById("target-gram").value) || 0;
 
-  const nextIdx = idx + dir;
-  if (nextIdx < 0 || nextIdx >= availableYears.length) return;
-
-  yearSelect.value = availableYears[nextIdx];
+  localStorage.setItem(targetKey(year), JSON.stringify({ idr, gram }));
+  alert("Target tersimpan.");
   updateDashboard();
+}
+
+function loadTargetsToUI() {
+  const year = document.getElementById("recap-year").value;
+  const t = loadTargets(year);
+
+  // target-idr juga kita format ribuan
+  const targetIdrEl = document.getElementById("target-idr");
+  targetIdrEl.value = t.idr ? t.idr.toLocaleString("id-ID") : "";
+
+  document.getElementById("target-gram").value = t.gram ? t.gram : "";
 }
 
 // ---------------- Auth ----------------
@@ -177,7 +198,8 @@ auth.onAuthStateChanged((user) => {
     loginScreen.style.display = "none";
     mainApp.style.display = "block";
 
-    setupIDRInput();
+    setupIDRInput("input-idr");
+    setupIDRInput("target-idr");
 
     const now = new Date();
     document.getElementById("input-date").valueAsDate = now;
@@ -187,7 +209,6 @@ auth.onAuthStateChanged((user) => {
   } else {
     currentUser = null;
     if (unsubscribeEmas) { unsubscribeEmas(); unsubscribeEmas = null; }
-
     loginScreen.style.display = "flex";
     mainApp.style.display = "none";
   }
@@ -196,7 +217,6 @@ auth.onAuthStateChanged((user) => {
 function handleLogin() {
   const email = (document.getElementById("login-email").value || "").trim();
   const pass = document.getElementById("login-pass").value || "";
-
   document.getElementById("login-error").style.display = "none";
   if (!email || !pass) return alert("Masukkan email dan password!");
 
@@ -219,7 +239,6 @@ function forgotPassword(ev) {
 
   setLoginMessage("Mengirim email reset password...");
 
-  // agar link reset mengarah balik ke domain vercel Anda
   const actionCodeSettings = {
     url: window.location.origin + "/",
     handleCodeInApp: false
@@ -260,11 +279,14 @@ function loadDataFromFirestore() {
       transactions = [];
       snapshot.forEach((doc) => transactions.push({ id: doc.id, ...doc.data() }));
 
-      // safety: sort lokal juga
+      // sort lokal (jaga-jaga)
       transactions.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 
-      populateYearOptions();
-      updateDashboard();
+      // normalisasi ringan (kategori kosong => Lainnya)
+      transactions = transactions.map(t => ({ ...t, category: t.category || "Lainnya" }));
+
+      populateYearSelects();
+      updateAll();
 
       if (debugEl) debugEl.innerText = `Login UID: ${currentUser.uid} | Data: ${snapshot.size} dokumen`;
     },
@@ -284,6 +306,7 @@ async function saveData() {
   try {
     const id = document.getElementById("edit-id").value;
     const dateStr = document.getElementById("input-date").value;
+    const category = document.getElementById("category").value || "Lainnya";
     const note = (document.getElementById("note").value || "").trim();
 
     const idr = parseIDR(document.getElementById("input-idr").value);
@@ -291,14 +314,14 @@ async function saveData() {
 
     if (!dateStr || !note) return alert("Tanggal dan keterangan wajib diisi.");
 
-    const data = { date: dateStr, note, idr, gram };
+    const data = { date: dateStr, category, note, idr, gram };
     const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
 
     if (id) await userRef.doc(id).update(data);
     else await userRef.add(data);
 
     resetForm();
-    setView("history"); // setelah simpan, langsung ke riwayat (lebih enak)
+    setView("history");
   } catch (e) {
     console.error(e);
     alert("Gagal menyimpan: " + e.message);
@@ -318,29 +341,28 @@ function confirmDelete() {
   }
 }
 
-// ---------------- Dashboard + History render ----------------
+// ---------------- Rendering ----------------
+function updateAll() {
+  // saat recap-year berubah, reload target UI (karena target per tahun)
+  localStorage.setItem("recap-year", document.getElementById("recap-year").value);
+  loadTargetsToUI();
+
+  updateDashboard();
+  updateHistory();
+}
+
 function updateDashboard() {
-  const yearVal = document.getElementById("filter-year")?.value || "all";
-  const filterMonth = document.getElementById("filter-month")?.value || "all";
-  const filterSearch = (document.getElementById("filter-search")?.value || "").toLowerCase();
-
-  localStorage.setItem("filter-year", yearVal);
-
-  const recapYear = (yearVal === "all")
-    ? (availableYears[0] || String(new Date().getFullYear()))
-    : yearVal;
-
+  const recapYear = document.getElementById("recap-year").value || (availableYears[0] || String(new Date().getFullYear()));
   document.getElementById("year-recap-label").innerText = recapYear;
   document.getElementById("year-recap-label-2").innerText = recapYear;
+  document.getElementById("monthly-year-label").innerText = recapYear;
 
-  // totals
   let tGramAll = 0, tIdrAll = 0;
   let tGramYear = 0, tIdrYear = 0;
-  let fGram = 0, fIdr = 0;
 
-  // render table (riwayat)
-  const tbody = document.querySelector("#data-table tbody");
-  if (tbody) tbody.innerHTML = "";
+  // monthly sums for recapYear
+  const monthIDR = Array(12).fill(0);
+  const monthGRAM = Array(12).fill(0);
 
   for (const item of transactions) {
     const p = getDateParts(item.date);
@@ -348,8 +370,6 @@ function updateDashboard() {
 
     const idr = Number(item.idr) || 0;
     const gram = Number(item.gram) || 0;
-    const note = item.note || "";
-    const noteLower = note.toLowerCase();
 
     tGramAll += gram;
     tIdrAll += idr;
@@ -357,38 +377,94 @@ function updateDashboard() {
     if (p.y === recapYear) {
       tGramYear += gram;
       tIdrYear += idr;
-    }
 
-    // Filter riwayat (tahun benar-benar memfilter tabel)
-    const mY = (yearVal === "all" || p.y === yearVal);
-    const mM = (filterMonth === "all" || p.monthIndex === filterMonth);
-    const mS = noteLower.includes(filterSearch);
-
-    if (mY && mM && mS) {
-      fGram += gram;
-      fIdr += idr;
-
-      if (tbody) {
-        const row = tbody.insertRow();
-        row.onclick = () => openModal(item);
-
-        row.innerHTML = `
-          <td>${p.d}/${p.m}/${p.y}</td>
-          <td>${note}</td>
-          <td class="num">${idr.toLocaleString("id-ID")}</td>
-          <td class="num">${gram.toFixed(4)}</td>
-        `;
+      const mi = Number(p.monthIndex);
+      if (mi >= 0 && mi <= 11) {
+        monthIDR[mi] += idr;
+        monthGRAM[mi] += gram;
       }
     }
   }
 
-  // update dashboard cards
   document.getElementById("total-gram-all").innerText = tGramAll.toFixed(4) + " Gr";
   document.getElementById("total-idr-all").innerText = formatIDR(tIdrAll);
+
   document.getElementById("total-gram-year").innerText = tGramYear.toFixed(4) + " Gr";
   document.getElementById("total-idr-year").innerText = formatIDR(tIdrYear);
 
-  // update history footer
+  // monthly table
+  const monthlyBody = document.getElementById("monthly-body");
+  monthlyBody.innerHTML = "";
+  for (let i = 0; i < 12; i++) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${MONTHS[i]}</td>
+      <td class="num">${monthIDR[i].toLocaleString("id-ID")}</td>
+      <td class="num">${monthGRAM[i].toFixed(4)}</td>
+    `;
+    monthlyBody.appendChild(tr);
+  }
+
+  // progress targets
+  const targets = loadTargets(recapYear);
+  const tIdr = targets.idr || 0;
+  const tGram = targets.gram || 0;
+
+  // IDR progress
+  const idrPct = tIdr > 0 ? clamp((tIdrYear / tIdr) * 100, 0, 100) : 0;
+  document.getElementById("progress-idr-text").innerText = `${formatIDR(tIdrYear)} / ${formatIDR(tIdr)}`;
+  document.getElementById("progress-idr-fill").style.width = `${idrPct}%`;
+
+  // Gram progress
+  const gramPct = tGram > 0 ? clamp((tGramYear / tGram) * 100, 0, 100) : 0;
+  document.getElementById("progress-gram-text").innerText = `${tGramYear.toFixed(4)} / ${tGram.toFixed(4)}`;
+  document.getElementById("progress-gram-fill").style.width = `${gramPct}%`;
+}
+
+function updateHistory() {
+  const yearVal = document.getElementById("history-year").value || "all";
+  const filterMonth = document.getElementById("filter-month").value;
+  const filterCategory = document.getElementById("filter-category").value;
+  const filterSearch = (document.getElementById("filter-search").value || "").toLowerCase();
+
+  localStorage.setItem("history-year", yearVal);
+
+  const tbody = document.querySelector("#data-table tbody");
+  tbody.innerHTML = "";
+
+  let fGram = 0, fIdr = 0;
+
+  for (const item of transactions) {
+    const p = getDateParts(item.date);
+    if (!p) continue;
+
+    const idr = Number(item.idr) || 0;
+    const gram = Number(item.gram) || 0;
+    const cat = item.category || "Lainnya";
+    const note = item.note || "";
+    const noteLower = note.toLowerCase();
+
+    const mY = (yearVal === "all" || p.y === yearVal);
+    const mM = (filterMonth === "all" || p.monthIndex === filterMonth);
+    const mC = (filterCategory === "all" || cat === filterCategory);
+    const mS = noteLower.includes(filterSearch);
+
+    if (mY && mM && mC && mS) {
+      fGram += gram;
+      fIdr += idr;
+
+      const row = tbody.insertRow();
+      row.onclick = () => openModal(item);
+      row.innerHTML = `
+        <td>${p.d}/${p.m}/${p.y}</td>
+        <td>${cat}</td>
+        <td>${note}</td>
+        <td class="num">${idr.toLocaleString("id-ID")}</td>
+        <td class="num">${gram.toFixed(4)}</td>
+      `;
+    }
+  }
+
   document.getElementById("foot-idr").innerText = formatIDR(fIdr);
   document.getElementById("foot-gram").innerText = fGram.toFixed(4);
 }
@@ -402,6 +478,7 @@ function openModal(item) {
 
   document.getElementById("modal-body").innerHTML = `
     <div><b>Tanggal</b>: ${toDateString(item.date)}</div>
+    <div><b>Kategori</b>: ${item.category || "Lainnya"}</div>
     <div><b>Keterangan</b>: ${item.note || ""}</div>
     <div><b>Nominal</b>: ${formatIDR(idr)}</div>
     <div><b>Berat</b>: ${gram.toFixed(4)} Gr</div>
@@ -420,6 +497,7 @@ function modalBackdropClose(e) {
 function resetForm() {
   document.getElementById("edit-id").value = "";
   document.getElementById("input-date").valueAsDate = new Date();
+  document.getElementById("category").value = "Nabung";
   document.getElementById("note").value = "";
   document.getElementById("input-idr").value = "";
   document.getElementById("input-gram").value = "";
@@ -435,6 +513,7 @@ function prepareEdit() {
 
   document.getElementById("edit-id").value = item.id;
   document.getElementById("input-date").value = toDateString(item.date);
+  document.getElementById("category").value = item.category || "Lainnya";
   document.getElementById("note").value = item.note || "";
   document.getElementById("input-idr").value = formatIDRInputValue(item.idr);
   document.getElementById("input-gram").value = Number(item.gram) || 0;
@@ -452,6 +531,7 @@ function prepareEdit() {
 function exportData() {
   const cleaned = transactions.map((t) => ({
     date: toDateString(t.date),
+    category: t.category || "Lainnya",
     note: t.note ?? "",
     idr: Number(t.idr) || 0,
     gram: Number(t.gram) || 0
@@ -491,6 +571,7 @@ async function importData(event) {
         const dateStr = toDateString(item.date) || (typeof item.date === "string" ? item.date : "");
         batch.set(docRef, {
           date: dateStr,
+          category: item.category || "Lainnya",
           note: item.note ?? "",
           idr: Number(item.idr) || 0,
           gram: Number(item.gram) || 0
