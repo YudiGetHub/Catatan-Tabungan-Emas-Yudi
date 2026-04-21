@@ -16,205 +16,194 @@ const db = firebase.firestore();
 let transactions = [];
 let selectedId = null;
 let currentUser = null;
+let unsubscribeEmas = null;
 
-// --- 1. AUTHENTICATION ---
+// ===== Helper Tanggal (aman jika suatu saat format berubah) =====
+function getDateParts(dateValue) {
+  if (!dateValue) return null;
+
+  // String "YYYY-MM-DD"
+  if (typeof dateValue === "string" && dateValue.includes("-")) {
+    const [y, m, d] = dateValue.split("-");
+    return { y, m, d, monthIndex: String(parseInt(m, 10) - 1) };
+  }
+
+  // Firestore Timestamp (jaga-jaga)
+  if (dateValue && typeof dateValue.toDate === "function") {
+    const dt = dateValue.toDate();
+    const y = String(dt.getFullYear());
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return { y, m, d, monthIndex: String(dt.getMonth()) };
+  }
+
+  // Object timestamp hasil JSON {seconds:..., nanoseconds:...} (jaga-jaga)
+  if (typeof dateValue === "object" && typeof dateValue.seconds === "number") {
+    const dt = new Date(dateValue.seconds * 1000);
+    const y = String(dt.getFullYear());
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return { y, m, d, monthIndex: String(dt.getMonth()) };
+  }
+
+  return null;
+}
+
+function formatDateYMD(dateValue) {
+  const p = getDateParts(dateValue);
+  if (!p) return "";
+  return `${p.y}-${p.m}-${p.d}`;
+}
+
+// ===== 1) AUTH =====
 auth.onAuthStateChanged((user) => {
-    const loginScreen = document.getElementById('login-screen');
-    const mainApp = document.getElementById('main-app');
-    if (user) {
-        currentUser = user;
-        loginScreen.style.display = 'none';
-        mainApp.style.display = 'block';
-        const now = new Date();
-        document.getElementById('input-date').valueAsDate = now;
-        // Pastikan input tahun terisi tahun saat ini di awal
-        document.getElementById('filter-year').value = now.getFullYear();
-        loadDataFromFirestore(); 
-    } else {
-        currentUser = null;
-        loginScreen.style.display = 'flex';
-        mainApp.style.display = 'none';
+  const loginScreen = document.getElementById('login-screen');
+  const mainApp = document.getElementById('main-app');
+
+  if (user) {
+    currentUser = user;
+    loginScreen.style.display = 'none';
+    mainApp.style.display = 'block';
+
+    const now = new Date();
+    document.getElementById('input-date').valueAsDate = now;
+
+    // Tahun ini dipakai untuk REKAP, bukan menyaring tabel
+    document.getElementById('filter-year').value = now.getFullYear();
+
+    loadDataFromFirestore();
+  } else {
+    currentUser = null;
+    loginScreen.style.display = 'flex';
+    mainApp.style.display = 'none';
+
+    if (unsubscribeEmas) {
+      unsubscribeEmas();
+      unsubscribeEmas = null;
     }
+  }
 });
 
 function handleLogin() {
-    const email = document.getElementById('login-email').value;
-    const pass = document.getElementById('login-pass').value;
-    const errorMsg = document.getElementById('login-error');
-    if(!email || !pass) return alert("Masukkan email dan password!");
-    auth.signInWithEmailAndPassword(email, pass).catch(err => {
-        errorMsg.innerText = "Gagal Masuk: " + err.message;
-        errorMsg.style.display = 'block';
-    });
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-pass').value;
+  const errorMsg = document.getElementById('login-error');
+
+  if (!email || !pass) return alert("Masukkan email dan password!");
+
+  errorMsg.style.display = 'none';
+  auth.signInWithEmailAndPassword(email, pass).catch(err => {
+    errorMsg.innerText = "Gagal Masuk: " + err.message;
+    errorMsg.style.display = 'block';
+  });
 }
 
 function handleLogout() {
-    if(confirm("Apakah Anda ingin keluar?")) auth.signOut();
+  if (confirm("Apakah Anda ingin keluar?")) auth.signOut();
 }
 
 function forgotPassword() {
-    const email = document.getElementById('login-email').value;
-    if (!email) return alert("Ketik email di kotak login!");
-    auth.sendPasswordResetEmail(email).then(() => alert("Email reset terkirim!")).catch(err => alert(err.message));
+  const email = document.getElementById('login-email').value;
+  if (!email) return alert("Ketik email di kotak login!");
+  auth.sendPasswordResetEmail(email)
+    .then(() => alert("Email reset terkirim!"))
+    .catch(err => alert(err.message));
 }
 
 function changePassword() {
-    const newPass = prompt("Password Baru (Min 6 Karakter):");
-    if (newPass && newPass.length >= 6) {
-        auth.currentUser.updatePassword(newPass).then(() => alert("Berhasil!")).catch(err => alert(err.message));
-    }
+  const newPass = prompt("Password Baru (Min 6 Karakter):");
+  if (newPass && newPass.length >= 6) {
+    auth.currentUser.updatePassword(newPass)
+      .then(() => alert("Berhasil!"))
+      .catch(err => alert(err.message));
+  }
 }
 
-// --- 2. DATABASE ---
+// ===== 2) DATABASE =====
 function loadDataFromFirestore() {
-    db.collection("users").doc(currentUser.uid).collection("emas")
-    .orderBy("date", "desc") 
-    .onSnapshot((snapshot) => {
-        transactions = [];
-        snapshot.forEach((doc) => { transactions.push({ id: doc.id, ...doc.data() }); });
-        updateDashboard();
-    });
+  const ref = db.collection("users").doc(currentUser.uid).collection("emas");
+
+  if (unsubscribeEmas) unsubscribeEmas();
+
+  // Karena date Anda STRING, orderBy ini aman.
+  // Tapi kita tetap kasih error handler agar kalau ada data campuran, aplikasi tidak diam.
+  unsubscribeEmas = ref.orderBy("date", "desc").onSnapshot(
+    (snapshot) => {
+      transactions = [];
+      snapshot.forEach((doc) => transactions.push({ id: doc.id, ...doc.data() }));
+      updateDashboard();
+    },
+    (err) => {
+      console.error("Firestore listener error:", err);
+      alert("Gagal memuat data: " + err.message);
+
+      // fallback: coba tanpa orderBy (agar data tetap bisa tampil)
+      if (unsubscribeEmas) unsubscribeEmas();
+      unsubscribeEmas = ref.onSnapshot(
+        (snapshot) => {
+          transactions = [];
+          snapshot.forEach((doc) => transactions.push({ id: doc.id, ...doc.data() }));
+          updateDashboard();
+        },
+        (err2) => {
+          console.error("Firestore listener error (fallback):", err2);
+          alert("Gagal memuat data: " + err2.message);
+        }
+      );
+    }
+  );
 }
 
 function saveData() {
-    const id = document.getElementById('edit-id').value;
-    const data = {
-        date: document.getElementById('input-date').value,
-        note: document.getElementById('note').value,
-        idr: parseFloat(document.getElementById('input-idr').value) || 0,
-        gram: parseFloat(document.getElementById('input-gram').value) || 0
-    };
-    if (!data.date || !data.note) return alert("Data tidak lengkap!");
-    const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
-    if (id) {
-        userRef.doc(id).update(data).then(() => resetForm());
-    } else {
-        userRef.add(data).then(() => resetForm());
-    }
+  if (!currentUser) return alert("Silakan login dulu.");
+
+  const id = document.getElementById('edit-id').value;
+
+  const dateStr = document.getElementById('input-date').value; // "YYYY-MM-DD"
+  const noteStr = (document.getElementById('note').value || "").trim();
+
+  const data = {
+    date: dateStr,
+    note: noteStr,
+    idr: Number(document.getElementById('input-idr').value) || 0,
+    gram: Number(document.getElementById('input-gram').value) || 0
+  };
+
+  if (!data.date || !data.note) return alert("Data tidak lengkap!");
+
+  const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
+
+  if (id) {
+    userRef.doc(id).update(data).then(() => resetForm());
+  } else {
+    userRef.add(data).then(() => resetForm());
+  }
 }
 
 function confirmDelete() {
-    if(confirm("Hapus data?")) {
-        db.collection("users").doc(currentUser.uid).collection("emas").doc(selectedId).delete().then(() => closeModal());
-    }
+  if (!selectedId) return;
+  if (confirm("Hapus data?")) {
+    db.collection("users").doc(currentUser.uid).collection("emas")
+      .doc(selectedId).delete()
+      .then(() => closeModal());
+  }
 }
 
-// --- 3. DASHBOARD (LOGIKA FILTER DIPERBAIKI) ---
+// ===== 3) DASHBOARD =====
+// PENTING: TABEL TIDAK DIFILTER BERDASARKAN TAHUN.
+// Tahun hanya untuk REKAP "tahun ini / tahun pilihan".
 function updateDashboard() {
-    const filterYear = document.getElementById('filter-year').value;
-    const filterMonth = document.getElementById('filter-month').value;
-    const filterSearch = document.getElementById('filter-search').value.toLowerCase();
-    const tbody = document.querySelector('#data-table tbody');
-    tbody.innerHTML = '';
+  const recapYear = (document.getElementById('filter-year').value || new Date().getFullYear()).toString();
+  const filterMonth = document.getElementById('filter-month').value; // "all" atau "0..11"
+  const filterSearch = (document.getElementById('filter-search').value || "").toLowerCase();
 
-    let tGramAll = 0, tIdrAll = 0, fGram = 0, fIdr = 0;
+  // update label rekap tahun
+  const y1 = document.getElementById('year-recap-label');
+  const y2 = document.getElementById('year-recap-label-2');
+  if (y1) y1.innerText = recapYear;
+  if (y2) y2.innerText = recapYear;
 
-    transactions.forEach(item => {
-        // PERBAIKAN: Mengambil tahun dan bulan langsung dari string "YYYY-MM-DD"
-        // agar tidak terkena masalah zona waktu (timezone)
-        const dateParts = item.date.split("-"); // [YYYY, MM, DD]
-        const itemYear = dateParts[0];
-        const itemMonth = (parseInt(dateParts[1]) - 1).toString(); // Bulan di JS mulai dari 0
+  const tbody = document.querySelector('#data-table tbody');
+  tbody.innerHTML = '';
 
-        tGramAll += item.gram; 
-        tIdrAll += item.idr;
-
-        const mY = (filterYear === "" || filterYear === itemYear);
-        const mM = (filterMonth === "all" || filterMonth === itemMonth);
-        const mS = item.note.toLowerCase().includes(filterSearch);
-
-        if (mY && mM && mS) {
-            fGram += item.gram; 
-            fIdr += item.idr;
-            
-            const row = tbody.insertRow();
-            row.onclick = () => openModal(item);
-            // Tampilan tanggal: DD/MM
-            row.innerHTML = `
-                <td>${dateParts[2]}/${dateParts[1]}</td>
-                <td>${item.note}</td>
-                <td>${item.idr.toLocaleString('id-ID')}</td>
-                <td>${item.gram.toFixed(4)}</td>
-            `;
-        }
-    });
-
-    // Update Angka Summary
-    document.getElementById('total-gram-all').innerText = tGramAll.toFixed(4) + " Gr";
-    document.getElementById('total-idr-all').innerText = "Rp " + tIdrAll.toLocaleString('id-ID');
-    
-    // Update Angka Total Filter
-    document.getElementById('foot-idr').innerText = "Rp " + fIdr.toLocaleString('id-ID');
-    document.getElementById('foot-gram').innerText = fGram.toFixed(4);
-}
-
-// --- 4. UI HELPER ---
-function openModal(item) {
-    selectedId = item.id;
-    document.getElementById('modal-body').innerHTML = `
-        <p><strong>Tanggal:</strong> ${item.date}</p>
-        <p><strong>Keterangan:</strong> ${item.note}</p>
-        <p><strong>Nominal:</strong> Rp ${item.idr.toLocaleString('id-ID')}</p>
-        <p><strong>Berat:</strong> ${item.gram.toFixed(4)} Gr</p>
-    `;
-    document.getElementById('detailModal').style.display = 'block';
-}
-
-function closeModal() { 
-    document.getElementById('detailModal').style.display = 'none'; 
-}
-
-function resetForm() {
-    document.getElementById('edit-id').value = ""; 
-    document.getElementById('input-date').valueAsDate = new Date();
-    document.getElementById('note').value = ""; 
-    document.getElementById('input-idr').value = "";
-    document.getElementById('input-gram').value = ""; 
-    document.getElementById('form-title').innerText = "Input Transaksi";
-    document.getElementById('btn-save').innerText = "Simpan ke Cloud"; 
-    document.getElementById('btn-cancel').style.display = "none";
-}
-
-function prepareEdit() {
-    const item = transactions.find(t => t.id === selectedId);
-    document.getElementById('edit-id').value = item.id; 
-    document.getElementById('input-date').value = item.date;
-    document.getElementById('note').value = item.note; 
-    document.getElementById('input-idr').value = item.idr;
-    document.getElementById('input-gram').value = item.gram;
-    document.getElementById('form-title').innerText = "Edit Transaksi"; 
-    document.getElementById('btn-save').innerText = "Update Cloud"; 
-    document.getElementById('btn-cancel').style.display = "block"; 
-    closeModal(); 
-    window.scrollTo(0,0);
-}
-
-function changeYear(step) { 
-    const input = document.getElementById('filter-year');
-    input.value = parseInt(input.value) + step; 
-    updateDashboard(); 
-}
-
-// --- 5. BACKUP ---
-function exportData() {
-    const blob = new Blob([JSON.stringify(transactions)], {type: "application/json"});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `backup_emas_${new Date().toLocaleDateString()}.json`;
-    a.click();
-}
-
-function importData(event) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const data = JSON.parse(e.target.result);
-        if(confirm(`Impor ${data.length} data ke Cloud?`)) {
-            const userRef = db.collection("users").doc(currentUser.uid).collection("emas");
-            data.forEach(item => { 
-                const {id, ...pureData} = item; 
-                userRef.add(pureData); 
-            });
-        }
-    };
-    reader.readAsText(event.target.files[0]);
-}
+  // Total all-time 
