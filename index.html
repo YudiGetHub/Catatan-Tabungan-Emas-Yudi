@@ -117,6 +117,18 @@
             <div class="card-title">Total Modal Tahun <span id="year-recap-label-2"></span></div>
             <div class="card-value" id="total-idr-year">Rp 0</div>
           </div>
+
+          <!-- TAMBAHAN: avg price/gram all-time -->
+          <div class="card card-accent">
+            <div class="card-title">Rata-rata Harga/Gram (All-time)</div>
+            <div class="card-value" id="avg-price-all">-</div>
+          </div>
+
+          <!-- TAMBAHAN: avg price/gram per tahun rekap -->
+          <div class="card">
+            <div class="card-title">Rata-rata Harga/Gram (Tahun <span id="year-recap-label-3"></span>)</div>
+            <div class="card-value" id="avg-price-year">-</div>
+          </div>
         </section>
 
         <div class="progress-wrap">
@@ -145,7 +157,7 @@
       <section class="panel">
         <div class="panel-head">
           <h3>Rekap Bulanan (Tahun <span id="monthly-year-label"></span>)</h3>
-          <p class="panel-sub">Total IDR & Gram per bulan untuk tahun terpilih.</p>
+          <p class="panel-sub">Total IDR & Gram per bulan, plus rata-rata harga/gram (hanya dari transaksi gram &gt; 0).</p>
         </div>
 
         <div class="table-wrap">
@@ -155,6 +167,7 @@
                 <th>Bulan</th>
                 <th class="num">Total IDR</th>
                 <th class="num">Total Gram</th>
+                <th class="num">Rata-rata (Rp/Gr)</th>
               </tr>
             </thead>
             <tbody id="monthly-body"></tbody>
@@ -170,11 +183,12 @@
 
         <ul class="tips">
           <li>Gunakan <b>Kategori</b> konsisten: Nabung / Panen / Beli / Lainnya.</li>
-          <li>Isi <b>IDR dan Gram</b> kalau transaksi pembelian. Kalau hanya nabung uang, isi IDR saja.</li>
-          <li>Gunakan keterangan dengan pola: <b>“Panen emas - Nov 2025”</b> biar gampang dicari.</li>
-          <li>Backup JSON rutin (mis. tiap akhir bulan) dan simpan di Google Drive.</li>
-          <li>Jika suatu hari data tidak muncul dan ada pesan izin, cek <b>Firestore Rules</b> dulu (bukan filter).</li>
-          <li>Untuk Vercel: jangan sering pakai URL preview untuk fitur reset password—pakai domain produksi yang sudah di-authorize.</li>
+          <li>Kalau transaksi pembelian emas, usahakan isi <b>IDR dan Gram</b> supaya rata-rata harga/gram akurat.</li>
+          <li>Gunakan keterangan pola: <b>“Panen emas - Nov 2025”</b> agar mudah dicari.</li>
+          <li>Biasakan <b>1 transaksi = 1 kejadian</b> (jangan digabung beberapa tanggal).</li>
+          <li>Backup JSON rutin (akhir bulan) dan simpan di Drive/Telegram Saved.</li>
+          <li>Untuk Vercel: reset password harus dari domain produksi yang sudah di-authorize.</li>
+          <li>Jika ada pesan “permissions”, cek <b>Firestore Rules</b> dulu.</li>
         </ul>
       </section>
     </section>
