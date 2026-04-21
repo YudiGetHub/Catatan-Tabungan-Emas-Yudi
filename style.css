@@ -34,7 +34,7 @@ body{
 }
 
 .container{
-  width: min(980px, calc(100% - 28px));
+  width: min(1000px, calc(100% - 28px));
   margin: 22px auto 40px;
   display: grid;
   gap: 14px;
@@ -65,7 +65,7 @@ h1{ margin: 0; font-size: 20px; letter-spacing: 0.2px; }
   background: rgba(255,255,255,0.8);
   border-radius: 14px;
   padding: 11px 12px;
-  font-weight: 800;
+  font-weight: 900;
   cursor: pointer;
   color: var(--brown-2);
 }
@@ -76,35 +76,6 @@ h1{ margin: 0; font-size: 20px; letter-spacing: 0.2px; }
 }
 
 .view{ display: block; }
-
-.summary{
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-@media (max-width: 900px){
-  .summary{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-.card{
-  background: var(--surface);
-  border: 1px solid rgba(74, 54, 37, 0.10);
-  border-radius: var(--radius);
-  padding: 14px 14px;
-  box-shadow: var(--shadow-2);
-}
-.card-accent{
-  background: linear-gradient(180deg, rgba(255, 248, 238, 0.95), rgba(255,255,255,1));
-  border-color: rgba(184, 134, 11, 0.18);
-}
-.card-title{ color: var(--muted); font-size: 12px; }
-.card-value{
-  margin-top: 6px;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-  font-size: 18px;
-  color: var(--brown);
-}
 
 .panel{
   background: var(--surface);
@@ -120,6 +91,7 @@ h1{ margin: 0; font-size: 20px; letter-spacing: 0.2px; }
 
 .field{ display: grid; gap: 6px; }
 .field span{ font-size: 12px; color: var(--muted); }
+
 input, select{
   width: 100%;
   padding: 12px 12px;
@@ -134,6 +106,9 @@ input:focus, select:focus{
   box-shadow: 0 0 0 4px var(--ring);
 }
 
+.hint{ margin: 0; font-size: 12px; color: var(--muted); }
+.error{ color: var(--danger); }
+
 .form-grid, .form-grid-2{ display: grid; gap: 10px; }
 .form-grid-2{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 720px){
@@ -147,7 +122,7 @@ input:focus, select:focus{
   border: 1px solid transparent;
   border-radius: 12px;
   padding: 11px 14px;
-  font-weight: 800;
+  font-weight: 900;
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, border-color 120ms ease;
 }
@@ -173,30 +148,108 @@ input:focus, select:focus{
   color: var(--danger);
 }
 
-.filters{
+.link{ font-size: 13px; color: var(--gold); text-decoration: none; font-weight: 900; }
+.link:hover{ text-decoration: underline; }
+
+/* Dashboard layout */
+.dash-top{
   display: grid;
-  grid-template-columns: 1fr 1fr 1.3fr;
+  grid-template-columns: 220px 1fr;
   gap: 12px;
   margin-bottom: 12px;
 }
-@media (max-width: 900px){ .filters{ grid-template-columns: 1fr; } }
+@media (max-width: 900px){
+  .dash-top{ grid-template-columns: 1fr; }
+}
 .filter-label{ font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 
-.year-stepper{
+.target-grid{
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  gap: 8px;
-  align-items: center;
+  grid-template-columns: 1fr 1fr 160px;
+  gap: 10px;
+  align-items: end;
 }
-.step{
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(74, 54, 37, 0.16);
-  background: #fff;
-  cursor: pointer;
-  font-size: 18px;
+@media (max-width: 900px){
+  .target-grid{ grid-template-columns: 1fr; }
+}
+
+/* Summary cards */
+.summary{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+@media (max-width: 900px){
+  .summary{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.card{
+  background: var(--surface);
+  border: 1px solid rgba(74, 54, 37, 0.10);
+  border-radius: var(--radius);
+  padding: 14px 14px;
+  box-shadow: var(--shadow-2);
+}
+.card-accent{
+  background: linear-gradient(180deg, rgba(255, 248, 238, 0.95), rgba(255,255,255,1));
+  border-color: rgba(184, 134, 11, 0.18);
+}
+.card-title{ color: var(--muted); font-size: 12px; }
+.card-value{
+  margin-top: 6px;
   font-weight: 900;
-  color: var(--brown-2);
+  letter-spacing: 0.2px;
+  font-size: 18px;
+  color: var(--brown);
+}
+
+/* Progress */
+.progress-wrap{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (max-width: 900px){
+  .progress-wrap{ grid-template-columns: 1fr; }
+}
+.progress-card{
+  background: var(--surface-2);
+  border: 1px solid rgba(184, 134, 11, 0.12);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.progress-head{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.progress-title{ font-weight: 900; color: var(--brown); font-size: 13px; }
+.progress-meta{ color: var(--muted); font-size: 12px; }
+.progress{
+  height: 10px;
+  background: rgba(74, 54, 37, 0.10);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.progress-fill{
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #d6b15a, #b8860b);
+}
+
+/* History */
+.filters{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.3fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 900px){
+  .filters{ grid-template-columns: 1fr; }
 }
 
 .table-wrap{
@@ -207,7 +260,7 @@ input:focus, select:focus{
 table{
   width: 100%;
   border-collapse: collapse;
-  min-width: 640px;
+  min-width: 780px;
   background: #fff;
 }
 thead th{
@@ -250,6 +303,15 @@ tbody tr:hover{ background: rgba(214, 177, 90, 0.10); }
 }
 .action-footer .span-2{ grid-column: span 2; }
 
+.tips{
+  margin: 0;
+  padding-left: 18px;
+  color: var(--brown-2);
+  line-height: 1.7;
+  font-size: 13px;
+}
+
+/* Login */
 .login-overlay{
   position: fixed;
   inset: 0;
@@ -274,20 +336,6 @@ tbody tr:hover{ background: rgba(214, 177, 90, 0.10); }
 .brand{ display: grid; gap: 6px; margin-bottom: 12px; }
 .brand-icon{ font-weight: 900; font-size: 22px; letter-spacing: 0.4px; color: var(--brown); }
 .brand-sub{ color: var(--muted); font-size: 12px; }
-
-.link{ font-size: 13px; color: var(--gold); text-decoration: none; font-weight: 800; }
-.link:hover{ text-decoration: underline; }
-
-.hint{ margin: 0; font-size: 12px; color: var(--muted); }
-.error{ color: var(--danger); }
-
-.tips{
-  margin: 0;
-  padding-left: 18px;
-  color: var(--brown-2);
-  line-height: 1.7;
-  font-size: 13px;
-}
 
 /* Modal */
 .modal{
