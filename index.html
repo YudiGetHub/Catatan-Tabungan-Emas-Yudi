@@ -26,22 +26,17 @@
         <div class="brand-icon">EmasKu</div>
         <div class="brand-sub">Pencatatan Mandiri Aset</div>
       </div>
-
       <div class="form-grid">
         <label class="field">
           <span>Email</span>
           <input type="email" id="login-email" placeholder="contoh@email.com" autocomplete="username" />
         </label>
-
         <label class="field">
           <span>Password</span>
           <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
         </label>
-
         <button onclick="handleLogin()" class="btn btn-primary">Masuk</button>
-
         <a href="#" class="link" onclick="forgotPassword(event)">Lupa Password?</a>
-
         <p id="login-error" class="hint error" style="display:none;"></p>
         <p class="hint">Catatan: untuk Vercel, pastikan domain sudah ditambah di Firebase Auth → Authorized domains.</p>
       </div>
@@ -67,8 +62,9 @@
       <button class="tab" id="tab-history" onclick="setView('history')">Riwayat</button>
     </nav>
 
-    <!-- DASHBOARD -->
+    <!-- ======================== DASHBOARD ======================== -->
     <section id="view-dashboard" class="view">
+
       <!-- Motivasi Harian -->
       <section class="panel motivation-panel">
         <div class="motivation-icon">✨</div>
@@ -81,65 +77,91 @@
       <section class="panel">
         <div class="panel-head">
           <h3>Ringkasan</h3>
-          <p class="panel-sub">Pilih tahun untuk rekap dan target.</p>
+          <p class="panel-sub">Pilih tahun untuk melihat rekap dan target.</p>
         </div>
 
-        <div class="dash-top">
-          <div class="dash-year">
-            <div class="filter-label">Tahun Rekap</div>
-            <select id="recap-year" onchange="updateAll()"></select>
-          </div>
+        <!-- Tahun Rekap Selector -->
+        <div class="dash-year-row">
+          <div class="filter-label">Tahun Rekap</div>
+          <select id="recap-year" onchange="updateAll()"></select>
+        </div>
 
-          <div class="dash-target">
-            <div class="filter-label">Target Tahun Ini</div>
-            <div class="target-grid">
-              <label class="field">
-                <span>Target IDR</span>
-                <input type="text" id="target-idr" inputmode="numeric" placeholder="Mis: 50.000.000">
-              </label>
-              <label class="field">
-                <span>Target Gram</span>
-                <input type="number" step="0.0001" id="target-gram" placeholder="Mis: 10.0000">
-              </label>
-              <button class="btn btn-soft" onclick="saveTargets()">Simpan Target</button>
+        <!-- TARGET: Form Input (muncul jika belum set / sudah expired) -->
+        <div id="target-form-section" class="target-section" style="display:none;">
+          <div class="target-header">
+            <div class="target-header-icon">🎯</div>
+            <div>
+              <div class="target-header-title">Atur Target Tahun <span id="target-form-year"></span></div>
+              <div class="target-header-sub">Tentukan target tabungan emas kamu tahun ini.</div>
             </div>
-            <p class="hint">Target disimpan di perangkat (localStorage) per tahun.</p>
+          </div>
+          <div class="target-form-grid">
+            <label class="field">
+              <span>Target IDR</span>
+              <input type="text" id="target-idr" inputmode="numeric" placeholder="Mis: 50.000.000">
+            </label>
+            <label class="field">
+              <span>Target Gram</span>
+              <input type="number" step="0.0001" id="target-gram" placeholder="Mis: 10.0000">
+            </label>
+            <button class="btn btn-primary" onclick="saveTargets()">Simpan Target</button>
           </div>
         </div>
 
+        <!-- TARGET: Display (muncul jika sudah set & belum expired) -->
+        <div id="target-display-section" class="target-section" style="display:none;">
+          <div class="target-display-card">
+            <div class="target-display-header">
+              <div class="target-display-icon">🎯</div>
+              <div class="target-display-info">
+                <div class="target-display-title">Target Tahun <span id="target-display-year"></span></div>
+                <div class="target-display-meta" id="target-display-deadline"></div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="editTarget()">Ubah</button>
+            </div>
+            <div class="target-display-values">
+              <div class="target-display-item">
+                <div class="target-display-label">Target IDR</div>
+                <div class="target-display-value" id="target-display-idr">-</div>
+              </div>
+              <div class="target-display-item">
+                <div class="target-display-label">Target Gram</div>
+                <div class="target-display-value" id="target-display-gram">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
         <section class="summary">
           <div class="card card-accent">
             <div class="card-title">Total Emas (Semua Tahun)</div>
             <div class="card-value" id="total-gram-all">0.0000 Gr</div>
           </div>
-
           <div class="card">
             <div class="card-title">Total Modal (Semua Tahun)</div>
             <div class="card-value" id="total-idr-all">Rp 0</div>
           </div>
-
           <div class="card card-accent">
             <div class="card-title">Total Emas Tahun <span id="year-recap-label"></span></div>
             <div class="card-value" id="total-gram-year">0.0000 Gr</div>
           </div>
-
           <div class="card">
             <div class="card-title">Total Modal Tahun <span id="year-recap-label-2"></span></div>
             <div class="card-value" id="total-idr-year">Rp 0</div>
           </div>
-
           <div class="card card-accent">
             <div class="card-title">Rata-rata Harga/Gram (All-time)</div>
             <div class="card-value" id="avg-price-all">-</div>
           </div>
-
           <div class="card">
             <div class="card-title">Rata-rata Harga/Gram (Tahun <span id="year-recap-label-3"></span>)</div>
             <div class="card-value" id="avg-price-year">-</div>
           </div>
         </section>
 
-        <div class="progress-wrap">
+        <!-- Progress Bars (hanya muncul jika target sudah di-set) -->
+        <div class="progress-wrap" id="progress-section" style="display:none;">
           <div class="progress-card">
             <div class="progress-head">
               <div class="progress-title">Progress Target IDR</div>
@@ -148,8 +170,8 @@
             <div class="progress">
               <div class="progress-fill" id="progress-idr-fill" style="width:0%"></div>
             </div>
+            <div class="progress-pct" id="progress-idr-pct">0%</div>
           </div>
-
           <div class="progress-card">
             <div class="progress-head">
               <div class="progress-title">Progress Target Gram</div>
@@ -158,12 +180,13 @@
             <div class="progress">
               <div class="progress-fill" id="progress-gram-fill" style="width:0%"></div>
             </div>
+            <div class="progress-pct" id="progress-gram-pct">0%</div>
           </div>
         </div>
       </section>
     </section>
 
-    <!-- REKAP BULANAN -->
+    <!-- ======================== REKAP BULANAN ======================== -->
     <section id="view-rekap" class="view" style="display:none;">
       <section class="panel">
         <div class="panel-head">
@@ -201,7 +224,7 @@
                 <th class="num">Total IDR</th>
                 <th class="num">Total Gram</th>
                 <th class="num">Rata-rata (Rp/Gr)</th>
-                <th class="num">Jumlah Transaksi</th>
+                <th class="num">Transaksi</th>
               </tr>
             </thead>
             <tbody id="monthly-body"></tbody>
@@ -209,7 +232,6 @@
           </table>
         </div>
 
-        <!-- Chart visual sederhana -->
         <div class="panel-head" style="margin-top:18px;">
           <h3>Grafik Bulanan</h3>
           <p class="panel-sub">Visualisasi tabungan per bulan (IDR).</p>
@@ -218,22 +240,19 @@
       </section>
     </section>
 
-    <!-- INPUT -->
+    <!-- ======================== INPUT ======================== -->
     <section id="view-input" class="view" style="display:none;">
       <section class="panel">
         <div class="panel-head">
           <h3 id="form-title">Input Tabungan</h3>
           <p class="panel-sub">Simpan transaksi ke Cloud (Firestore).</p>
         </div>
-
         <input type="hidden" id="edit-id" />
-
         <div class="form-grid-2">
           <label class="field">
             <span>Tanggal</span>
             <input type="date" id="input-date" />
           </label>
-
           <label class="field">
             <span>Kategori</span>
             <select id="category">
@@ -243,24 +262,20 @@
               <option value="Lainnya">Lainnya</option>
             </select>
           </label>
-
           <label class="field">
             <span>Keterangan</span>
             <input type="text" id="note" placeholder="Mis: Panen emas - November 2025" />
           </label>
-
           <label class="field">
             <span>Nominal (IDR)</span>
             <input type="text" id="input-idr" inputmode="numeric" placeholder="Mis: 4.200.000" />
             <small class="hint">Auto-format. Yang disimpan tetap angka.</small>
           </label>
-
           <label class="field">
             <span>Berat (Gram)</span>
             <input type="number" step="0.0001" id="input-gram" placeholder="Mis: 1.7775" />
           </label>
         </div>
-
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-save" onclick="saveData()">Simpan ke Cloud</button>
           <button class="btn btn-soft" id="btn-cancel" onclick="resetForm()" style="display:none;">Batal</button>
@@ -268,20 +283,18 @@
       </section>
     </section>
 
-    <!-- HISTORY -->
+    <!-- ======================== HISTORY ======================== -->
     <section id="view-history" class="view" style="display:none;">
       <section class="panel">
         <div class="panel-head">
           <h3>Riwayat Tabungan</h3>
-          <p class="panel-sub">Filter per tahun (default: terbaru), urut transaksi terbaru.</p>
+          <p class="panel-sub">Filter per tahun, urut transaksi terbaru.</p>
         </div>
-
         <div class="filters">
           <div class="filter-block">
             <div class="filter-label">Tahun</div>
             <select id="history-year" onchange="updateHistory()"></select>
           </div>
-
           <div class="filter-block">
             <div class="filter-label">Bulan</div>
             <select id="filter-month" onchange="updateHistory()">
@@ -292,7 +305,6 @@
               <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
             </select>
           </div>
-
           <div class="filter-block">
             <div class="filter-label">Kategori</div>
             <select id="filter-category" onchange="updateHistory()">
@@ -303,13 +315,11 @@
               <option value="Lainnya">Lainnya</option>
             </select>
           </div>
-
           <div class="filter-block">
             <div class="filter-label">Cari</div>
-            <input type="text" id="filter-search" placeholder="Mis: panen / nabung / november" onkeyup="updateHistory()" />
+            <input type="text" id="filter-search" placeholder="Mis: panen / nabung" onkeyup="updateHistory()" />
           </div>
         </div>
-
         <div class="table-wrap">
           <table id="data-table">
             <thead>
@@ -324,7 +334,6 @@
             <tbody></tbody>
           </table>
         </div>
-
         <div class="table-foot">
           <div class="foot-item">
             <div class="foot-label">Total Filter (IDR)</div>
@@ -335,11 +344,9 @@
             <div class="foot-value" id="foot-gram">0.0000</div>
           </div>
         </div>
-
         <div class="action-footer">
           <button onclick="exportData()" class="btn btn-soft">Backup JSON</button>
           <button onclick="changePassword()" class="btn btn-soft">Ganti Password</button>
-
           <input type="file" id="importFile" onchange="importData(event)" style="display:none" />
           <button onclick="document.getElementById('importFile').click()" class="btn btn-ghost span-2">Upload JSON</button>
         </div>
