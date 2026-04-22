@@ -19,7 +19,7 @@ let selectedId = null;
 let currentUser = null;
 let unsubscribeEmas = null;
 
-let availableYears = []; // ["2026","2025",...]
+let availableYears = [];
 let currentView = "dashboard";
 
 const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -68,7 +68,6 @@ function formatIDRPlain(n) {
   return num.toLocaleString("id-ID");
 }
 
-// parse "4.200.000" => 4200000
 function parseIDR(str) {
   if (str == null) return 0;
   const digits = String(str).replace(/[^\d]/g, "");
@@ -108,13 +107,147 @@ function formatRpPerGram(value) {
   return "Rp " + Math.round(value).toLocaleString("id-ID") + "/Gr";
 }
 
+// ---------------- Motivasi Harian (Online) ----------------
+async function loadMotivation() {
+  const textEl = document.getElementById("motivation-text");
+  const authorEl = document.getElementById("motivation-author");
+
+  // Cek cache hari ini
+  const today = new Date().toISOString().slice(0, 10);
+  const cached = localStorage.getItem("emasku_motivation");
+
+  if (cached) {
+    try {
+      const data = JSON.parse(cached);
+      if (data.date === today && data.text) {
+        textEl.innerText = `"${data.text}"`;
+        authorEl.innerText = data.author ? `— ${data.author}` : "";
+        return;
+      }
+    } catch {}
+  }
+
+  // Coba fetch dari beberapa API
+  try {
+    // API 1: ZenQuotes (via proxy untuk CORS)
+    let quote = null;
+
+    try {
+      const res = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent("https://zenquotes.io/api/today"));
+      const json = await res.json();
+      const parsed = JSON.parse(json.contents);
+      if (parsed && parsed[0]) {
+        quote = { text: parsed[0].q, author: parsed[0].a };
+      }
+    } catch {}
+
+    // API 2: Quotable (fallback)
+    if (!quote) {
+      try {
+        const res = await fetch("https://api.quotable.io/quotes/random?tags=motivational|inspirational&limit=1");
+        const data = await res.json();
+        if (data && data[0]) {
+          quote = { text: data[0].content, author: data[0].author };
+        }
+      } catch {}
+    }
+
+    // API 3: API Ninjas (fallback kedua)
+    if (!quote) {
+      try {
+        const res = await fetch("https://api.api-ninjas.com/v1/quotes?category=inspirational", {
+          headers: { "X-Api-Key": "free" }
+        });
+        const data = await res.json();
+        if (data && data[0]) {
+          quote = { text: data[0].quote, author: data[0].author };
+        }
+      } catch {}
+    }
+
+    // API 4: DummyJSON (fallback ketiga - paling stabil)
+    if (!quote) {
+      try {
+        const res = await fetch("https://dummyjson.com/quotes/random");
+        const data = await res.json();
+        if (data && data.quote) {
+          quote = { text: data.quote, author: data.author };
+        }
+      } catch {}
+    }
+
+    if (quote) {
+      textEl.innerText = `"${quote.text}"`;
+      authorEl.innerText = quote.author ? `— ${quote.author}` : "";
+      localStorage.setItem("emasku_motivation", JSON.stringify({
+        date: today,
+        text: quote.text,
+        author: quote.author || ""
+      }));
+    } else {
+      // Fallback lokal berdasar hari
+      showLocalMotivation(textEl, authorEl, today);
+    }
+  } catch {
+    showLocalMotivation(textEl, authorEl, today);
+  }
+}
+
+function showLocalMotivation(textEl, authorEl, today) {
+  // Fallback: hash tanggal untuk pilih dari pool kecil
+  const dayNum = parseInt(today.replace(/-/g, ""), 10);
+  const pool = [
+    { t: "Kekayaan sejati adalah disiplin yang konsisten setiap hari.", a: "Anonim" },
+    { t: "Sedikit demi sedikit, lama-lama menjadi bukit emas.", a: "Pepatah" },
+    { t: "Investasi terbaik adalah investasi pada diri sendiri.", a: "Warren Buffett" },
+    { t: "Jangan menunggu waktu yang tepat, buatlah waktu menjadi tepat.", a: "Anonim" },
+    { t: "Emas tidak dibentuk tanpa api, begitu pula karakter tanpa tantangan.", a: "Anonim" },
+    { t: "Perjalanan seribu mil dimulai dari satu langkah.", a: "Lao Tzu" },
+    { t: "Menabung hari ini adalah hadiah untuk masa depanmu.", a: "Anonim" },
+    { t: "Konsistensi kecil mengalahkan usaha besar yang jarang.", a: "Anonim" },
+    { t: "Waktu adalah teman terbaik bagi penabung yang sabar.", a: "Anonim" },
+    { t: "Setiap gram emas adalah bukti komitmenmu pada masa depan.", a: "Anonim" },
+    { t: "Disiplin adalah jembatan antara tujuan dan pencapaian.", a: "Jim Rohn" },
+    { t: "Orang bijak menyimpan untuk hari esok, orang bodoh menghabiskan semuanya.", a: "Pepatah" },
+    { t: "Mulai dari yang kecil, bermimpi yang besar, bertindak sekarang.", a: "Robin Sharma" },
+    { t: "Sukses adalah hasil dari persiapan, kerja keras, dan belajar dari kegagalan.", a: "Colin Powell" },
+    { t: "Kebebasan finansial bukan tentang kaya, tapi tentang pilihan.", a: "Anonim" },
+    { t: "Tabunganmu hari ini menentukan kualitas hidupmu esok hari.", a: "Anonim" },
+    { t: "Jangan bandingkan prosesmu dengan hasil orang lain.", a: "Anonim" },
+    { t: "Yang penting bukan seberapa banyak yang kau hasilkan, tapi seberapa banyak yang kau simpan.", a: "Robert Kiyosaki" },
+    { t: "Setiap hari adalah kesempatan baru untuk menabung lebih baik.", a: "Anonim" },
+    { t: "Kekuatan terbesar adalah kemampuan untuk menunda kepuasan.", a: "Anonim" },
+    { t: "Emas akan selalu bersinar, seperti usahamu yang tak pernah berhenti.", a: "Anonim" },
+    { t: "Masa depan cerah dimulai dari keputusan bijak hari ini.", a: "Anonim" },
+    { t: "Sedikit emas setiap bulan, gunung emas di hari tua.", a: "Anonim" },
+    { t: "Langkah kecil yang konsisten lebih kuat dari lompatan besar yang sekali.", a: "Anonim" },
+    { t: "Hidup sederhana, menabung tekun, masa depan tenang.", a: "Anonim" },
+    { t: "Rahasia kekayaan ada pada kebiasaan, bukan keberuntungan.", a: "Anonim" },
+    { t: "Jangan biarkan kemarin mengambil terlalu banyak dari hari ini.", a: "Will Rogers" },
+    { t: "Orang yang menabung emas hari ini sedang membangun bentengnya.", a: "Anonim" },
+    { t: "Tetesan air yang terus-menerus bisa melubangi batu.", a: "Pepatah Latin" },
+    { t: "Setiap sen yang ditabung adalah batu bata untuk rumah impianmu.", a: "Anonim" },
+    { t: "Jangan takut lambat, takutlah berhenti.", a: "Pepatah Tiongkok" }
+  ];
+  const idx = dayNum % pool.length;
+  textEl.innerText = `"${pool[idx].t}"`;
+  authorEl.innerText = `— ${pool[idx].a}`;
+}
+
 // ---------------- Views / Tabs ----------------
 function setView(view) {
   currentView = view;
-  const views = ["dashboard", "input", "history"];
+  const views = ["dashboard", "rekap", "input", "history"];
   for (const v of views) {
-    document.getElementById(`view-${v}`).style.display = (v === view) ? "block" : "none";
-    document.getElementById(`tab-${v}`).classList.toggle("active", v === view);
+    const el = document.getElementById(`view-${v}`);
+    const tab = document.getElementById(`tab-${v}`);
+    if (el) el.style.display = (v === view) ? "block" : "none";
+    if (tab) tab.classList.toggle("active", v === view);
+  }
+
+  if (view === "rekap") {
+    syncRekapYearSelect();
+    updateRekapBulanan();
   }
 }
 
@@ -154,7 +287,24 @@ function populateYearSelects() {
   localStorage.setItem("recap-year", recapYear);
   localStorage.setItem("history-year", historyYear);
 
+  // Sync rekap year select
+  syncRekapYearSelect();
+
   loadTargetsToUI();
+}
+
+function syncRekapYearSelect() {
+  const rekapSel = document.getElementById("rekap-year-select");
+  if (!rekapSel) return;
+
+  const latest = availableYears[0] || String(new Date().getFullYear());
+  const savedRecap = localStorage.getItem("recap-year") || latest;
+
+  rekapSel.innerHTML = availableYears.length
+    ? availableYears.map(y => `<option value="${y}">${y}</option>`).join("")
+    : `<option value="${latest}">${latest}</option>`;
+
+  rekapSel.value = availableYears.includes(savedRecap) ? savedRecap : latest;
 }
 
 // ---------------- Targets (localStorage per user per year) ----------------
@@ -211,6 +361,7 @@ auth.onAuthStateChanged((user) => {
     document.getElementById("input-date").valueAsDate = new Date();
 
     loadDataFromFirestore();
+    loadMotivation();
     setView("dashboard");
   } else {
     currentUser = null;
@@ -350,6 +501,7 @@ function updateAll() {
   loadTargetsToUI();
 
   updateDashboard();
+  updateRekapBulanan();
   updateHistory();
 }
 
@@ -359,20 +511,12 @@ function updateDashboard() {
   document.getElementById("year-recap-label").innerText = recapYear;
   document.getElementById("year-recap-label-2").innerText = recapYear;
   document.getElementById("year-recap-label-3").innerText = recapYear;
-  document.getElementById("monthly-year-label").innerText = recapYear;
 
   let tGramAll = 0, tIdrAll = 0;
   let tGramYear = 0, tIdrYear = 0;
 
-  // untuk avg price/gram: hanya transaksi gram > 0
   let priceIdrAll = 0, priceGramAll = 0;
   let priceIdrYear = 0, priceGramYear = 0;
-
-  // monthly
-  const monthIDR = Array(12).fill(0);
-  const monthGRAM = Array(12).fill(0);
-  const monthPriceIDR = Array(12).fill(0);  // idr yang gram>0
-  const monthPriceGRAM = Array(12).fill(0); // gram>0
 
   for (const item of transactions) {
     const p = getDateParts(item.date);
@@ -381,7 +525,6 @@ function updateDashboard() {
     const idr = Number(item.idr) || 0;
     const gram = Number(item.gram) || 0;
 
-    // total all-time
     tGramAll += gram;
     tIdrAll += idr;
 
@@ -390,20 +533,9 @@ function updateDashboard() {
       priceGramAll += gram;
     }
 
-    // per tahun rekap
     if (p.y === recapYear) {
       tGramYear += gram;
       tIdrYear += idr;
-
-      const mi = Number(p.monthIndex);
-      if (mi >= 0 && mi <= 11) {
-        monthIDR[mi] += idr;
-        monthGRAM[mi] += gram;
-        if (gram > 0 && idr > 0) {
-          monthPriceIDR[mi] += idr;
-          monthPriceGRAM[mi] += gram;
-        }
-      }
 
       if (gram > 0 && idr > 0) {
         priceIdrYear += idr;
@@ -412,35 +544,17 @@ function updateDashboard() {
     }
   }
 
-  // cards totals
   document.getElementById("total-gram-all").innerText = tGramAll.toFixed(4) + " Gr";
   document.getElementById("total-idr-all").innerText = formatIDR(tIdrAll);
 
   document.getElementById("total-gram-year").innerText = tGramYear.toFixed(4) + " Gr";
   document.getElementById("total-idr-year").innerText = formatIDR(tIdrYear);
 
-  // avg price cards
   const avgAll = (priceGramAll > 0) ? (priceIdrAll / priceGramAll) : 0;
   const avgYear = (priceGramYear > 0) ? (priceIdrYear / priceGramYear) : 0;
 
   document.getElementById("avg-price-all").innerText = formatRpPerGram(avgAll);
   document.getElementById("avg-price-year").innerText = formatRpPerGram(avgYear);
-
-  // monthly table
-  const monthlyBody = document.getElementById("monthly-body");
-  monthlyBody.innerHTML = "";
-  for (let i = 0; i < 12; i++) {
-    const avgM = (monthPriceGRAM[i] > 0) ? (monthPriceIDR[i] / monthPriceGRAM[i]) : 0;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${MONTHS[i]}</td>
-      <td class="num">${formatIDRPlain(monthIDR[i])}</td>
-      <td class="num">${monthGRAM[i].toFixed(4)}</td>
-      <td class="num">${avgM ? ("Rp " + Math.round(avgM).toLocaleString("id-ID")) : "-"}</td>
-    `;
-    monthlyBody.appendChild(tr);
-  }
 
   // progress targets
   const targets = loadTargets(recapYear);
@@ -454,6 +568,134 @@ function updateDashboard() {
   const gramPct = tGram > 0 ? clamp((tGramYear / tGram) * 100, 0, 100) : 0;
   document.getElementById("progress-gram-text").innerText = `${tGramYear.toFixed(4)} / ${tGram.toFixed(4)}`;
   document.getElementById("progress-gram-fill").style.width = `${gramPct}%`;
+}
+
+// ---------------- Rekap Bulanan (Tab Terpisah) ----------------
+function updateRekapBulanan() {
+  const rekapSel = document.getElementById("rekap-year-select");
+  if (!rekapSel) return;
+
+  const recapYear = rekapSel.value || (availableYears[0] || String(new Date().getFullYear()));
+
+  // Update labels
+  const labelIdr = document.getElementById("rekap-year-label-idr");
+  const labelGram = document.getElementById("rekap-year-label-gram");
+  const labelAvg = document.getElementById("rekap-year-label-avg");
+  if (labelIdr) labelIdr.innerText = recapYear;
+  if (labelGram) labelGram.innerText = recapYear;
+  if (labelAvg) labelAvg.innerText = recapYear;
+
+  const monthIDR = Array(12).fill(0);
+  const monthGRAM = Array(12).fill(0);
+  const monthPriceIDR = Array(12).fill(0);
+  const monthPriceGRAM = Array(12).fill(0);
+  const monthCount = Array(12).fill(0);
+
+  let yearTotalIDR = 0, yearTotalGRAM = 0;
+  let yearPriceIDR = 0, yearPriceGRAM = 0;
+
+  for (const item of transactions) {
+    const p = getDateParts(item.date);
+    if (!p || p.y !== recapYear) continue;
+
+    const idr = Number(item.idr) || 0;
+    const gram = Number(item.gram) || 0;
+
+    const mi = Number(p.monthIndex);
+    if (mi >= 0 && mi <= 11) {
+      monthIDR[mi] += idr;
+      monthGRAM[mi] += gram;
+      monthCount[mi]++;
+      if (gram > 0 && idr > 0) {
+        monthPriceIDR[mi] += idr;
+        monthPriceGRAM[mi] += gram;
+      }
+    }
+
+    yearTotalIDR += idr;
+    yearTotalGRAM += gram;
+    if (gram > 0 && idr > 0) {
+      yearPriceIDR += idr;
+      yearPriceGRAM += gram;
+    }
+  }
+
+  // Summary row
+  document.getElementById("rekap-total-idr").innerText = formatIDR(yearTotalIDR);
+  document.getElementById("rekap-total-gram").innerText = yearTotalGRAM.toFixed(4) + " Gr";
+  const yearAvg = yearPriceGRAM > 0 ? (yearPriceIDR / yearPriceGRAM) : 0;
+  document.getElementById("rekap-avg-price").innerText = formatRpPerGram(yearAvg);
+
+  // Monthly table
+  const monthlyBody = document.getElementById("monthly-body");
+  monthlyBody.innerHTML = "";
+
+  let grandIDR = 0, grandGRAM = 0, grandPIDR = 0, grandPGRAM = 0, grandCount = 0;
+
+  for (let i = 0; i < 12; i++) {
+    const avgM = (monthPriceGRAM[i] > 0) ? (monthPriceIDR[i] / monthPriceGRAM[i]) : 0;
+
+    grandIDR += monthIDR[i];
+    grandGRAM += monthGRAM[i];
+    grandPIDR += monthPriceIDR[i];
+    grandPGRAM += monthPriceGRAM[i];
+    grandCount += monthCount[i];
+
+    const hasData = monthIDR[i] > 0 || monthGRAM[i] > 0;
+
+    const tr = document.createElement("tr");
+    if (!hasData) tr.classList.add("row-empty");
+    tr.innerHTML = `
+      <td>${MONTHS[i]}</td>
+      <td class="num">${hasData ? formatIDRPlain(monthIDR[i]) : "-"}</td>
+      <td class="num">${hasData ? monthGRAM[i].toFixed(4) : "-"}</td>
+      <td class="num">${avgM ? ("Rp " + Math.round(avgM).toLocaleString("id-ID")) : "-"}</td>
+      <td class="num">${monthCount[i] > 0 ? monthCount[i] : "-"}</td>
+    `;
+    monthlyBody.appendChild(tr);
+  }
+
+  // Footer total
+  const monthlyFoot = document.getElementById("monthly-foot");
+  const grandAvg = grandPGRAM > 0 ? (grandPIDR / grandPGRAM) : 0;
+  monthlyFoot.innerHTML = `
+    <tr class="foot-row">
+      <td><b>TOTAL</b></td>
+      <td class="num"><b>${formatIDRPlain(grandIDR)}</b></td>
+      <td class="num"><b>${grandGRAM.toFixed(4)}</b></td>
+      <td class="num"><b>${grandAvg ? ("Rp " + Math.round(grandAvg).toLocaleString("id-ID")) : "-"}</b></td>
+      <td class="num"><b>${grandCount}</b></td>
+    </tr>
+  `;
+
+  // Render chart
+  renderMonthlyChart(monthIDR, recapYear);
+}
+
+// ---------------- Simple Bar Chart ----------------
+function renderMonthlyChart(monthIDR, year) {
+  const container = document.getElementById("chart-container");
+  if (!container) return;
+
+  const max = Math.max(...monthIDR, 1);
+  const shortMonths = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+  let html = '<div class="chart-bars">';
+  for (let i = 0; i < 12; i++) {
+    const pct = (monthIDR[i] / max) * 100;
+    const hasData = monthIDR[i] > 0;
+    html += `
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">${hasData ? formatIDRPlain(monthIDR[i]) : ""}</div>
+        <div class="chart-bar-track">
+          <div class="chart-bar-fill ${hasData ? '' : 'empty'}" style="height:${hasData ? Math.max(pct, 3) : 2}%"></div>
+        </div>
+        <div class="chart-bar-label">${shortMonths[i]}</div>
+      </div>
+    `;
+  }
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 function updateHistory() {
@@ -632,10 +874,6 @@ async function importData(event) {
   reader.readAsText(file);
 }
 
-// ---------------- init after DOM loaded ----------------
 document.addEventListener("DOMContentLoaded", () => {
   // default view handled in auth state
 });
-
-// ---------------- Firestore + Year selects triggers ----------------
-// NOTE: populateYearSelects & updateAll dipanggil di loadDataFromFirestore snapshot
