@@ -62,16 +62,26 @@
     <!-- NAV TABS -->
     <nav class="tabs">
       <button class="tab active" id="tab-dashboard" onclick="setView('dashboard')">Dashboard</button>
+      <button class="tab" id="tab-rekap" onclick="setView('rekap')">Rekap</button>
       <button class="tab" id="tab-input" onclick="setView('input')">Input</button>
       <button class="tab" id="tab-history" onclick="setView('history')">Riwayat</button>
     </nav>
 
     <!-- DASHBOARD -->
     <section id="view-dashboard" class="view">
+      <!-- Motivasi Harian -->
+      <section class="panel motivation-panel">
+        <div class="motivation-icon">✨</div>
+        <div class="motivation-content">
+          <p class="motivation-text" id="motivation-text">Memuat motivasi hari ini...</p>
+          <p class="motivation-author" id="motivation-author"></p>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="panel-head">
           <h3>Ringkasan</h3>
-          <p class="panel-sub">Pilih tahun untuk rekap, target, dan rekap bulanan.</p>
+          <p class="panel-sub">Pilih tahun untuk rekap dan target.</p>
         </div>
 
         <div class="dash-top">
@@ -118,13 +128,11 @@
             <div class="card-value" id="total-idr-year">Rp 0</div>
           </div>
 
-          <!-- TAMBAHAN: avg price/gram all-time -->
           <div class="card card-accent">
             <div class="card-title">Rata-rata Harga/Gram (All-time)</div>
             <div class="card-value" id="avg-price-all">-</div>
           </div>
 
-          <!-- TAMBAHAN: avg price/gram per tahun rekap -->
           <div class="card">
             <div class="card-title">Rata-rata Harga/Gram (Tahun <span id="year-recap-label-3"></span>)</div>
             <div class="card-value" id="avg-price-year">-</div>
@@ -153,11 +161,36 @@
           </div>
         </div>
       </section>
+    </section>
 
+    <!-- REKAP BULANAN -->
+    <section id="view-rekap" class="view" style="display:none;">
       <section class="panel">
         <div class="panel-head">
-          <h3>Rekap Bulanan (Tahun <span id="monthly-year-label"></span>)</h3>
-          <p class="panel-sub">Total IDR & Gram per bulan, plus rata-rata harga/gram (hanya dari transaksi gram &gt; 0).</p>
+          <h3>Rekap Bulanan</h3>
+          <p class="panel-sub">Total IDR & Gram per bulan, plus rata-rata harga/gram.</p>
+        </div>
+
+        <div class="rekap-filter">
+          <div class="filter-block">
+            <div class="filter-label">Tahun Rekap</div>
+            <select id="rekap-year-select" onchange="updateRekapBulanan()"></select>
+          </div>
+        </div>
+
+        <div class="rekap-summary-row">
+          <div class="rekap-summary-item">
+            <div class="rekap-summary-label">Total IDR Tahun <span id="rekap-year-label-idr"></span></div>
+            <div class="rekap-summary-value" id="rekap-total-idr">Rp 0</div>
+          </div>
+          <div class="rekap-summary-item">
+            <div class="rekap-summary-label">Total Gram Tahun <span id="rekap-year-label-gram"></span></div>
+            <div class="rekap-summary-value" id="rekap-total-gram">0.0000 Gr</div>
+          </div>
+          <div class="rekap-summary-item">
+            <div class="rekap-summary-label">Rata-rata/Gram Tahun <span id="rekap-year-label-avg"></span></div>
+            <div class="rekap-summary-value" id="rekap-avg-price">-</div>
+          </div>
         </div>
 
         <div class="table-wrap">
@@ -168,28 +201,20 @@
                 <th class="num">Total IDR</th>
                 <th class="num">Total Gram</th>
                 <th class="num">Rata-rata (Rp/Gr)</th>
+                <th class="num">Jumlah Transaksi</th>
               </tr>
             </thead>
             <tbody id="monthly-body"></tbody>
+            <tfoot id="monthly-foot"></tfoot>
           </table>
         </div>
-      </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h3>Saran Agar Rapi & Aman</h3>
-          <p class="panel-sub">Kebiasaan kecil yang bikin data awet dan gampang dibaca.</p>
+        <!-- Chart visual sederhana -->
+        <div class="panel-head" style="margin-top:18px;">
+          <h3>Grafik Bulanan</h3>
+          <p class="panel-sub">Visualisasi tabungan per bulan (IDR).</p>
         </div>
-
-        <ul class="tips">
-          <li>Gunakan <b>Kategori</b> konsisten: Nabung / Panen / Beli / Lainnya.</li>
-          <li>Kalau transaksi pembelian emas, usahakan isi <b>IDR dan Gram</b> supaya rata-rata harga/gram akurat.</li>
-          <li>Gunakan keterangan pola: <b>“Panen emas - Nov 2025”</b> agar mudah dicari.</li>
-          <li>Biasakan <b>1 transaksi = 1 kejadian</b> (jangan digabung beberapa tanggal).</li>
-          <li>Backup JSON rutin (akhir bulan) dan simpan di Drive/Telegram Saved.</li>
-          <li>Untuk Vercel: reset password harus dari domain produksi yang sudah di-authorize.</li>
-          <li>Jika ada pesan “permissions”, cek <b>Firestore Rules</b> dulu.</li>
-        </ul>
+        <div class="chart-container" id="chart-container"></div>
       </section>
     </section>
 
